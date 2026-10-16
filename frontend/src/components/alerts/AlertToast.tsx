@@ -22,7 +22,7 @@ export function AlertToast({
   }, [event, onDismiss]);
 
   return (
-    <div aria-live="assertive" className="pointer-events-none fixed inset-x-4 top-20 z-40 flex justify-end sm:inset-x-auto sm:right-6">
+    <div aria-live="assertive" className="pointer-events-none fixed inset-x-4 bottom-4 z-40 flex justify-end sm:inset-x-auto sm:top-20 sm:right-6 sm:bottom-auto">
       {event && (
         <div role="alert" className="enter pointer-events-auto flex w-full max-w-sm gap-3 rounded-2xl bg-navy p-4 text-on-dark shadow-2xl ring-1 ring-anomaly-on-dark/40">
           <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-anomaly-on-dark/15 text-anomaly-on-dark">

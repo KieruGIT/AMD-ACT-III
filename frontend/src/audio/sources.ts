@@ -92,6 +92,7 @@ export function startSimulated(
   onChunk: (c: Float32Array) => void,
   profile: () => SimulatedProfile,
   sampleRate = 16000,
+  prefillMs = 0,
 ): AudioSource {
   let seed = 7;
   const rand = () => {
@@ -103,7 +104,7 @@ export function startSimulated(
   const chunkMs = 50;
   const n = Math.round((sampleRate * chunkMs) / 1000);
 
-  const timer = setInterval(() => {
+  const tick = () => {
     const p = profile();
     const out = new Float32Array(n);
     for (let i = 0; i < n; i++, t++) {
@@ -131,7 +132,9 @@ export function startSimulated(
       out[i] = x;
     }
     onChunk(out);
-  }, chunkMs);
+  };
+  for (let i = 0; i < prefillMs / chunkMs; i++) tick(); // history so charts start full
+  const timer = setInterval(tick, chunkMs);
 
   return {
     kind: 'simulated',

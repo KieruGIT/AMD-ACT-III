@@ -11,10 +11,13 @@ export function WaveformChart({
   bufferRef,
   sampleRate,
   running,
+  compact,
 }: {
   bufferRef: RefObject<RollingBuffer | null>;
   sampleRate: number | null;
   running: boolean;
+  /** Canvas only, sized by `compact` (a height class). Used for decorative previews. */
+  compact?: string;
 }) {
   const scratch = useRef(new Float32Array(0));
   const range = useRef(0.05);
@@ -66,6 +69,8 @@ export function WaveformChart({
       setReadout({ range: range.current, level: rmsDb(data.subarray(n - Math.min(n, sampleRate))) });
     }
   }, running);
+
+  if (compact) return <canvas ref={canvasRef} className={`block w-full ${compact}`} role="img" aria-label="Live audio waveform" />;
 
   return (
     <figure className="m-0">

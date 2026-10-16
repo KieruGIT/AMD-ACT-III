@@ -33,10 +33,13 @@ export function SpectrogramChart({
   bufferRef,
   sampleRate,
   running,
+  compact,
 }: {
   bufferRef: RefObject<RollingBuffer | null>;
   sampleRate: number | null;
   running: boolean;
+  /** Canvas only, sized by `compact` (a height class). Used for decorative previews. */
+  compact?: string;
 }) {
   const img = useRef<HTMLCanvasElement | null>(null);
   const nextPos = useRef(0);
@@ -54,7 +57,9 @@ export function SpectrogramChart({
       octx.fillStyle = `rgb(${PALETTE[0].join(',')})`;
       octx.fillRect(0, 0, w, ROWS);
       img.current = off;
-      nextPos.current = bufferRef.current?.total ?? 0;
+      // Backfill whatever history the buffer already holds.
+      const b = bufferRef.current;
+      nextPos.current = b ? Math.max(b.total - b.size, b.total - (sampleRate ?? 0) * VIEW_SECONDS) : 0;
     }
     const octx = off.getContext('2d')!;
     const buf = bufferRef.current;
@@ -92,6 +97,13 @@ export function SpectrogramChart({
   }, running);
 
   const ticks = [1, 0.75, 0.5, 0.25, 0].map((f) => Math.round(topHz * f));
+
+  if (compact) return <canvas
+            ref={canvasRef}
+            className={`block w-full ${compact}`}
+            role="img"
+            aria-label={`Spectrogram, 0 to ${formatHz(topHz)}, last ${VIEW_SECONDS} seconds; darker means more energy`}
+          />;
 
   return (
     <figure className="m-0">

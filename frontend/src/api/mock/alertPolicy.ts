@@ -71,7 +71,7 @@ export class AlertAggregator {
     const anomalous = this.recent.filter((r) => r.anomaly);
     if (anomalous.length < this.policy.min_anomalous_windows || at < this.cooldownUntil) return none;
 
-    const reason = `${anomalous.length} of the last ${this.recent.length} valid windows exceeded threshold`;
+    const reason = `${anomalous.length} of the last ${this.policy.consider_last_valid_windows} valid windows exceeded threshold`;
     const ev: AlertEvent = {
       event_id: this.newId(),
       session_id: w.sessionId,

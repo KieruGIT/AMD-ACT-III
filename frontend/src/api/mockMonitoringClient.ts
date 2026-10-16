@@ -58,9 +58,7 @@ export function scriptedScore(scenario: MockScenario, k: number, rand: () => num
     case 'transient_spike':
       return k % 10 === 3 ? 0.88 + rand() * 0.05 : normal;
     case 'anomaly':
-      if (k < 1) return normal;
-      if (k % 7 === 5) return 0.58; // brief dip below threshold: 3-of-5 rule tolerates it
-      return 0.74 + rand() * 0.18;
+      return k < 1 ? normal : 0.74 + rand() * 0.18;
     default:
       return normal;
   }

@@ -59,12 +59,17 @@ export function Dashboard() {
 
   return (
     <div className="min-h-dvh">
-      <AppHeader mode={client.mode} openAlerts={events.filter((e) => e.ended_at === null).length} onOpen={setDrawer} />
+      <AppHeader openAlerts={events.filter((e) => e.ended_at === null).length} onOpen={setDrawer} />
 
       <main className="mx-auto grid max-w-[1440px] gap-5 px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-8">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
-            <p className="eyebrow text-ink-faint">Live monitoring</p>
+            <p className="eyebrow text-ink-faint">
+              Live monitoring ·{' '}
+              <span className={client.mode === 'mock' ? 'text-teal' : 'text-normal'}>
+                {client.mode === 'mock' ? 'Simulation (mock backend)' : 'Live model'}
+              </span>
+            </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
               {profile ? profile.label : 'Machine monitor'}
               {profile && <span className="ml-3 align-middle text-base font-medium tracking-normal text-ink-faint">{profile.id}</span>}

@@ -53,15 +53,19 @@ export function AssessmentCard({
       <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-teal/40 blur-3xl" />
 
       <div className="relative flex items-start justify-between gap-3">
-        <p id="assessment-title" className="eyebrow text-on-dark-muted">Current assessment</p>
+        <p id="assessment-title" className="eyebrow whitespace-nowrap text-on-dark-muted">Current assessment</p>
         <StatusChip dark tone={meta.tone} Icon={meta.Icon}>{meta.short}</StatusChip>
       </div>
 
-      <div className="relative mt-6" role="status" aria-live="polite" aria-atomic="true">
+      <div className="relative mt-6" role="status" aria-live="polite" aria-atomic="true" data-testid="assessment">
         <p className={`text-[clamp(2.25rem,4vw,3.4rem)] leading-[0.95] font-semibold tracking-[-0.035em] text-balance ${wordColor[view]}`}>
           {meta.label}
         </p>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-on-dark-muted">{meta.description}</p>
+        <p className="mt-3 max-w-sm text-sm leading-relaxed text-on-dark-muted">
+          {activeEvent && view === 'normal'
+            ? 'This window is below the threshold, but the open alert stays active until several consecutive normal windows confirm recovery.'
+            : meta.description}
+        </p>
       </div>
 
       <div className="relative mt-6 grid grid-cols-2 gap-3">
