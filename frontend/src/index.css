@@ -1,0 +1,93 @@
+@import '@fontsource-variable/archivo';
+@import 'tailwindcss';
+
+/* Design tokens — derived from the supplied references (off-white editorial canvas, deep navy and
+   teal blocks, rounded flat cards). Green/amber/red are reserved for monitoring states. */
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: #f3f2ee;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eceae4;
+  --color-line: #e0ddd5;
+  --color-line-strong: #c9c5ba;
+  --color-ink: #0f1b2d;
+  --color-ink-muted: #545d6b;
+  --color-ink-faint: #7a828e;
+
+  --color-navy: #111e3b;
+  --color-navy-raised: #1a2a4c;
+  --color-navy-line: #2c3c60;
+  --color-teal: #1d5560;
+  --color-teal-strong: #143f48;
+  --color-teal-soft: #d7e7e6;
+  --color-on-dark: #eef2f7;
+  --color-on-dark-muted: #a6b1c4;
+
+  --color-normal: #17784f;
+  --color-normal-soft: #dcefe5;
+  --color-normal-on-dark: #6fd8a8;
+  --color-warning: #94600c;
+  --color-warning-soft: #f7ead0;
+  --color-warning-on-dark: #f3c46f;
+  --color-anomaly: #b42b2b;
+  --color-anomaly-soft: #f8dfdc;
+  --color-anomaly-on-dark: #ff9a8f;
+  --color-unknown: #5f6672;
+  --color-unknown-soft: #e7e6e2;
+  --color-unknown-on-dark: #c2c8d2;
+
+  --radius-card: 22px;
+  --radius-inner: 14px;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'ss01';
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-teal);
+    outline-offset: 2px;
+  }
+  .on-dark :focus-visible {
+    outline-color: var(--color-on-dark);
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); }
+  100% { box-shadow: 0 0 0 7px transparent; }
+}
+.live-dot {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@keyframes slide-in {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.enter {
+  animation: slide-in 220ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot, .enter { animation: none; }
+  * { transition-duration: 0ms !important; }
+}
