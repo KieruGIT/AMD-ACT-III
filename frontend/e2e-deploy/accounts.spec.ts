@@ -9,6 +9,7 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await admin.getByRole('button', { name: 'Continue as guest' }).click();
   await expect(admin).toHaveURL(/\/app$/);
   await expect(admin.getByText('Nothing is kept')).toBeVisible();
+  await expect(admin.getByTestId('guest-countdown')).toHaveText(/^1:59:\d\d$/); // live countdown to deletion
 
   await admin.getByRole('button', { name: 'Add a device' }).click();
   const add = admin.getByRole('dialog', { name: 'Add a device' });

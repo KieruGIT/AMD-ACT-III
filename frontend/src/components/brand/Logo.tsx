@@ -1,13 +1,17 @@
-// A steady machine hum with one burst that is different (the anomaly). Designed in Figma:
-// "Machine Sound Monitor — Brand" → Logo / Mark. Previous mark (four bars): git tag landing-v1-photo-hero.
+// A steady machine hum (teal waves) running into the one sound that is different (the coral four-point star).
+// Previous marks: git tags landing-v1-photo-hero (four bars) and landing-v2-navy-logo (wave on a navy tile).
 export function LogoMark({ className = 'size-9' }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <rect width="64" height="64" rx="16" fill="#111e3b" />
-      <g fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 32Q12 27 15 32T21 32T26 32M38 32Q41 27 44 32T50 32T55 32" stroke="#7f8ba3" />
-        <path d="M26 32Q29 12 32 32T38 32" stroke="#e5654e" />
-      </g>
+      <path
+        d="M3 32Q7 25 11 32T19 32M61 32Q57 25 53 32T45 32"
+        fill="none"
+        stroke="#1d5560"
+        strokeWidth="6.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M32 5Q35 29 46 32Q35 35 32 59Q29 35 18 32Q29 29 32 5Z" fill="#ef6a52" stroke="#ef6a52" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   );
 }

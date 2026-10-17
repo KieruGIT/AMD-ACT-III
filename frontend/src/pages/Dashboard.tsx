@@ -39,6 +39,10 @@ const DRAWER_TITLE: Record<DrawerId, string> = {
 
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const countdown = (ms: number) => {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+};
 
 function accountMenu(overviewName: string | undefined, overviewRole: keyof typeof ROLE_LABEL | undefined): AccountMenu | null {
   const name = credentials?.projectName ?? overviewName ?? 'Workspace';
@@ -103,6 +107,13 @@ export function Dashboard() {
     if (role === 'unconfigured') location.replace('/signin'); // live mode needs a workspace (or a paired device)
   }, []);
 
+  const guestGone = role === 'guest' && !!credentials?.expiresAt && Date.parse(credentials.expiresAt) <= now;
+  useEffect(() => {
+    if (!guestGone) return;
+    clearCredentials(); // the guest workspace has been deleted
+    location.replace('/signin');
+  }, [guestGone]);
+
   const profiles = backend.config?.supported_profiles ?? [];
   const profile = profiles.find((p) => p.id === machineId) ?? profiles[0];
 
@@ -136,7 +147,13 @@ export function Dashboard() {
         <div className="border-b border-warning/20 bg-warning-soft">
           <p className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-warning sm:px-6 lg:px-8">
             <span className="font-semibold">Guest workspace</span>
-            <span>Nothing is kept: it and everything in it is deleted at {clock(credentials.expiresAt)}.</span>
+            <span>
+              Nothing is kept: it and everything in it is deleted in{' '}
+              <span data-testid="guest-countdown" className="num font-semibold tabular-nums">
+                {countdown(Date.parse(credentials.expiresAt) - now)}
+              </span>{' '}
+              (at {clock(credentials.expiresAt)}).
+            </span>
             <a href="/signin" className="font-semibold underline underline-offset-4">
               Create an account to keep your work
             </a>
