@@ -41,6 +41,14 @@ class Hub:
         self._recent: dict[str, deque] = {}
         self._subs: dict[str, set[asyncio.Queue]] = {}
         self.latest_by_device: dict[str, dict] = {}
+        self._device_scorer: dict[str, dict] = {}  # device id → learning windows / learned normal (on-site scorers)
+
+    def device_scorer_state(self, device_id: str) -> dict:
+        return self._device_scorer.setdefault(device_id, {})
+
+    def forget_device(self, device_id: str) -> None:
+        """Re-learn: drop the learned normal and any learning in progress for this device."""
+        self._device_scorer.pop(device_id, None)
 
     def session(self, device_id: str, session_id: str) -> SessionState:
         key = (device_id, session_id)

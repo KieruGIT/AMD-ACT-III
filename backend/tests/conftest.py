@@ -38,7 +38,9 @@ def to_wav(x: np.ndarray, rate: int = 48_000, channels: int = 1) -> bytes:
 
 @pytest.fixture
 def app():
-    return create_app(":memory:")
+    a = create_app(":memory:")
+    a.state.scorer.learn_windows = 5  # learn the normal sound from 5 windows instead of a minute
+    return a
 
 
 @pytest.fixture

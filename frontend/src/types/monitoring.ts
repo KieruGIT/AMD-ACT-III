@@ -40,6 +40,8 @@ export interface WindowResult {
   };
   /** Proposed v1.1: why a window was not assessed (e.g. "learning this session's baseline"). */
   note?: string | null;
+  /** While a device learns its normal sound (first minute): how far along it is. */
+  learning?: { windows: number; needed: number } | null;
   /** Proposed v1.1, present only when the backend runs with INTERFERENCE=flag. Never changes status or alerts. */
   interference?: null | {
     flags: ('speech' | 'transient')[];
@@ -127,6 +129,8 @@ export interface DeviceSummary {
   created_at?: string;
   last_seen_at: string | null;
   latest: WindowResult | null;
+  pending?: boolean; // paired with a code, waiting for an admin to approve it
+  learned_at?: string | null; // when its normal sound was learned (on-site scorer); null while learning
 }
 
 export type Role = 'owner' | 'admin' | 'viewer';
@@ -146,6 +150,10 @@ export type StreamMessage = { replay?: boolean } & (
   | { type: 'window'; device_id: string; device_name: string; result: WindowResult; event: AlertEvent | null }
   | { type: 'event'; event: AlertEvent & { device_id: string } }
   | { type: 'device_revoked'; device_id: string }
+  | { type: 'device_request'; device_id: string; device_name: string }
+  | { type: 'device_approved'; device_id: string }
+  | { type: 'device_learned'; device_id: string }
+  | { type: 'device_relearn'; device_id: string }
 );
 
 // --- Accounts and administration (backend/app/routers/workspace.py) ---
@@ -196,6 +204,7 @@ export interface PairedDevice {
   device_name: string;
   machine_id: string;
   is_guest: boolean;
+  status?: 'pending' | 'approved';
 }
 
 export interface AuditEntry {

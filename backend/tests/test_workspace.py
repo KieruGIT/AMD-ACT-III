@@ -96,15 +96,53 @@ def test_pairing_code_is_single_use_and_revocation_cuts_the_device_off(c):
     assert len(code["code"]) == 9 and code["machine_id"] == "fan_01"
     paired = c.post("/api/v1/pair", json={"code": code["code"].lower().replace("-", "")}).json()  # typing-friendly
     assert paired["project_id"] == pid and paired["device_key"].startswith("dk_") and paired["project_name"] == "Plant A"
+    assert paired["status"] == "pending"
     assert c.post("/api/v1/pair", json={"code": code["code"]}).status_code == 404  # used up
 
+    # it waits for an admin: no audio until approved
     db = c.app.state.db
+    dev = {"X-Project-Id": pid, "X-Device-Key": paired["device_key"]}
+    assert db.device_by_key(pid, paired["device_key"]) is None
+    assert c.get("/api/v1/pair/status", headers=dev).json() == {"status": "pending"}
+    listed = c.get(f"/api/v1/projects/{pid}", headers=as_("t-alice")).json()["devices"]
+    assert [(d["name"], d["pending"]) for d in listed] == [("Phone at fan", True)]
+    url = f"/api/v1/projects/{pid}/devices/{paired['device_id']}"
+    assert c.post(f"{url}/approve", headers=as_("t-alice")).status_code == 200
+    assert c.post(f"{url}/approve", headers=as_("t-alice")).status_code == 404  # once
+    assert c.get("/api/v1/pair/status", headers=dev).json() == {"status": "approved"}
     assert db.device_by_key(pid, paired["device_key"])["name"] == "Phone at fan"
     assert c.post(f"/api/v1/projects/{pid}/devices/{paired['device_id']}/revoke", headers=as_("t-alice")).status_code == 200
     assert db.device_by_key(pid, paired["device_key"]) is None
     assert c.post(f"/api/v1/projects/{pid}/devices/{paired['device_id']}/revoke", headers=as_("t-alice")).status_code == 404
     log = [e["action"] for e in c.get(f"/api/v1/projects/{pid}/audit", headers=as_("t-alice")).json()]
-    assert {"device.pairing_code_created", "device.paired", "device.revoked"} <= set(log)
+
+    assert {"device.pairing_code_created", "device.requested", "device.paired", "device.revoked"} <= set(log)
+    assert c.get("/api/v1/pair/status", headers=dev).json() == {"status": "rejected"}
+
+
+def test_device_can_name_itself_and_admins_reject_or_relearn(c):
+    pid = workspace_of(c)
+    url = f"/api/v1/projects/{pid}"
+    code = c.post(f"{url}/pairing-codes", json={"device_name": "Device 1"}, headers=as_("t-alice")).json()
+    paired = c.post("/api/v1/pair", json={"code": code["code"], "device_name": "iPhone · Safari"}).json()
+    assert paired["device_name"] == "iPhone · Safari"
+    c.post(f"{url}/invitations", json={"email": "bob@example.com", "role": "viewer"}, headers=as_("t-alice"))
+    c.get("/api/v1/me", headers=as_("t-bob"))
+    assert c.post(f"{url}/devices/{paired['device_id']}/approve", headers=as_("t-bob")).status_code == 403  # viewers can't
+    assert c.post(f"{url}/devices/{paired['device_id']}/revoke", headers=as_("t-alice")).status_code == 200  # reject
+    assert c.get("/api/v1/pair/status", headers={"X-Project-Id": pid, "X-Device-Key": paired["device_key"]}).json() == {"status": "rejected"}
+    assert c.get(url, headers=as_("t-alice")).json()["devices"] == []
+
+    # re-learn: forget the learned normal of an approved device
+    code = c.post(f"{url}/pairing-codes", json={"device_name": "Sensor"}, headers=as_("t-alice")).json()
+    d = c.post("/api/v1/pair", json={"code": code["code"]}).json()
+    c.post(f"{url}/devices/{d['device_id']}/approve", headers=as_("t-alice"))
+    db = c.app.state.db
+    db.save_baseline(pid, d["device_id"], "fan_01", "{}", 60)
+    assert c.get(url, headers=as_("t-alice")).json()["devices"][0]["learned_at"]
+    assert c.post(f"{url}/devices/{d['device_id']}/relearn", headers=as_("t-alice")).status_code == 200
+    assert db.baseline(d["device_id"]) is None
+    assert "device.relearn" in [e["action"] for e in c.get(f"{url}/audit", headers=as_("t-alice")).json()]
 
 
 def test_wrong_codes_are_rate_limited(c):
@@ -157,6 +195,8 @@ def test_sidebar_summary_counts_devices_listening_and_open_alerts(c):
     pid = workspace_of(c)
     code = c.post(f"/api/v1/projects/{pid}/pairing-codes", json={"device_name": "Phone"}, headers=as_("t-alice")).json()
     paired = c.post("/api/v1/pair", json={"code": code["code"]}).json()
+    assert c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]["devices"] == 0  # not until approved
+    c.post(f"/api/v1/projects/{pid}/devices/{paired['device_id']}/approve", headers=as_("t-alice"))
     w = c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]
     assert (w["devices"], w["listening"], w["open_alerts"], w["members"]) == (1, 0, 0, 1)
     c.app.state.db.touch_device(paired["device_id"])

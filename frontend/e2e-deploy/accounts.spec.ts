@@ -21,15 +21,20 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
 
   const phone = await (await browser.newContext({ permissions: ['microphone'] })).newPage();
   await phone.goto(`/pair#code=${code}`);
-  await expect(phone.locator('input')).toHaveValue(code); // filled from the QR link
+  await expect(phone.getByRole('textbox', { name: /Pairing code/ })).toHaveValue(code); // filled from the QR link
+  await phone.getByLabel('Name for this device').fill('Phone at fan');
   await phone.getByRole('button', { name: 'Pair device' }).click();
-  await expect(phone).toHaveURL(/\/app$/);
+  await expect(phone.getByText('Waiting for approval')).toBeVisible();
+
+  // The admin gets a pop-up and approves; the phone continues by itself.
+  const ask = admin.getByRole('alertdialog', { name: 'New device wants to join' });
+  await expect(ask).toContainText('Phone at fan', { timeout: 15_000 });
+  await ask.getByRole('button', { name: 'Approve' }).click();
+  await expect(phone).toHaveURL(/\/app$/, { timeout: 15_000 });
   await phone.getByText('Microphone', { exact: true }).click();
   await phone.getByRole('button', { name: 'Start monitoring' }).click();
   await expect(phone.getByTestId('assessment')).toHaveText(/Unable to assess|Normal|Abnormal/, { timeout: 30_000 });
 
-  await expect(add.getByText('is paired')).toBeVisible({ timeout: 15_000 });
-  await add.getByRole('button', { name: 'Done' }).click();
   await expect(add.getByText('listening now')).toBeVisible({ timeout: 20_000 });
   await expect(admin.getByTestId('assessment')).toHaveText(/Normal|Abnormal|Unable to assess/, { timeout: 30_000 });
 

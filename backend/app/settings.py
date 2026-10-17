@@ -20,6 +20,8 @@ class Settings:
     # "heuristic" (dev scorer, no trained model), "autoencoder" (trained checkpoint) or
     # "embedding" (pretrained PANNs CNN14 + nearest-neighbour distance to an enrolled healthy profile).
     scorer: str = field(default_factory=lambda: os.getenv("SCORER", "heuristic"))
+    # heuristic: good windows (1 per second) a device listens to before its normal sound is locked
+    learn_windows: int = field(default_factory=lambda: int(os.getenv("LEARN_WINDOWS", "60")))
     model_path: str = field(default_factory=lambda: os.getenv("MODEL_PATH", "models/fan_01.pt"))
     embedding_profile: str = field(default_factory=lambda: os.getenv("EMBEDDING_PROFILE", "models/fan_01_emb.npz"))
     panns_checkpoint: str = field(default_factory=lambda: os.getenv("PANNS_CHECKPOINT", "models/panns/Cnn14_16k_mAP=0.438.pth"))

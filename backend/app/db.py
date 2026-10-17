@@ -21,6 +21,7 @@ ROLES = ("owner", "admin", "viewer")
 PAIRING_TTL = timedelta(minutes=10)
 GUEST_TTL = timedelta(hours=2)
 LISTENING_WINDOW = timedelta(seconds=15)  # a device seen this recently counts as listening now
+APPROVAL_TTL = timedelta(minutes=10)  # a device waiting for approval longer than this is dropped
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I
 
 _TABLES = """
@@ -29,7 +30,8 @@ CREATE TABLE IF NOT EXISTS projects (
   is_guest INTEGER NOT NULL DEFAULT 0, expires_at TEXT);
 CREATE TABLE IF NOT EXISTS devices (
   id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, name TEXT NOT NULL,
-  machine_id TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, last_seen_at TEXT, revoked_at TEXT);
+  machine_id TEXT NOT NULL, key_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, last_seen_at TEXT, revoked_at TEXT,
+  pending INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS subscribers (
   id {serial}, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   name TEXT NOT NULL, channel TEXT NOT NULL, target TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -58,10 +60,13 @@ CREATE TABLE IF NOT EXISTS audit_log (
   id {serial}, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   actor TEXT NOT NULL, action TEXT NOT NULL, detail TEXT, at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS audit_project ON audit_log(project_id, at);
+CREATE TABLE IF NOT EXISTS baselines (
+  device_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  machine_id TEXT NOT NULL, data TEXT NOT NULL, windows INTEGER NOT NULL, created_at TEXT NOT NULL);
 """
 # Columns added after the first release (SQLite files created earlier get them on startup).
 _ADDED = {"events": {"interference_note": "TEXT", "acknowledged_by": "TEXT"},
-          "devices": {"revoked_at": "TEXT"},
+          "devices": {"revoked_at": "TEXT", "pending": "INTEGER NOT NULL DEFAULT 0"},
           "projects": {"is_guest": "INTEGER NOT NULL DEFAULT 0", "expires_at": "TEXT"},
           "members": {"email_alerts": "INTEGER NOT NULL DEFAULT 1"}}
 
@@ -180,7 +185,8 @@ class Database:
         return len(expired)
 
     def delete_project(self, project_id: str) -> None:
-        for table in ("audit_log", "pairing_codes", "invitations", "members", "events", "subscribers", "devices"):
+        for table in ("audit_log", "pairing_codes", "invitations", "members", "events", "subscribers", "baselines",
+                      "devices"):
             self._q(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))
         self._q("DELETE FROM projects WHERE id = ?", (project_id,))
 
@@ -263,9 +269,10 @@ class Database:
         """The user's workspaces with a live summary for the sidebar (devices, listening now, open alerts)."""
         recent = _iso(datetime.now(timezone.utc) - LISTENING_WINDOW)
         rows = self._q("""SELECT p.id, p.name, m.role, m.email_alerts,
-                   (SELECT COUNT(*) FROM devices d WHERE d.project_id = p.id AND d.revoked_at IS NULL) AS devices,
                    (SELECT COUNT(*) FROM devices d WHERE d.project_id = p.id AND d.revoked_at IS NULL
-                      AND d.last_seen_at > ?) AS listening,
+                      AND d.pending = 0) AS devices,
+                   (SELECT COUNT(*) FROM devices d WHERE d.project_id = p.id AND d.revoked_at IS NULL
+                      AND d.pending = 0 AND d.last_seen_at > ?) AS listening,
                    (SELECT COUNT(*) FROM events e WHERE e.project_id = p.id AND e.ended_at IS NULL) AS open_alerts,
                    (SELECT COUNT(*) FROM members x WHERE x.project_id = p.id) AS members
                  FROM members m JOIN projects p ON p.id = m.project_id
@@ -273,11 +280,11 @@ class Database:
         return [{**r, "email_alerts": bool(r["email_alerts"])} for r in rows]
 
     # --- devices & pairing -------------------------------------------------------------------
-    def create_device(self, project_id: str, name: str, machine_id: str) -> tuple[str, str]:
+    def create_device(self, project_id: str, name: str, machine_id: str, pending: bool = False) -> tuple[str, str]:
         device_id = f"dev_{secrets.token_hex(4)}"
         device_key = new_key("dk")
-        self._q("INSERT INTO devices (id, project_id, name, machine_id, key_hash, created_at) VALUES (?,?,?,?,?,?)",
-                (device_id, project_id, name, machine_id, hash_key(device_key), now_iso()))
+        self._q("INSERT INTO devices (id, project_id, name, machine_id, key_hash, created_at, pending) VALUES (?,?,?,?,?,?,?)",
+                (device_id, project_id, name, machine_id, hash_key(device_key), now_iso(), 1 if pending else 0))
         return device_id, device_key
 
     def ensure_device(self, project_id: str, name: str, machine_id: str, device_key: str) -> str:
@@ -298,17 +305,38 @@ class Database:
                    VALUES (?,?,?,?,?,?)""", (hash_key(code), project_id, device_name, machine_id, created_by, expires))
         return f"{code[:4]}-{code[4:]}", expires
 
-    def redeem_pairing_code(self, code: str) -> dict | None:
-        """Single use: marks the code used and creates the device. Returns the device with its key, or None."""
+    def redeem_pairing_code(self, code: str, device_name: str | None = None) -> dict | None:
+        """Single use: marks the code used and creates the device, waiting for an admin to approve it. Returns the
+        device with its key (usable once approved), or None."""
         h = hash_key(normalize_code(code))
         rows = self._q("""UPDATE pairing_codes SET used_at = ? WHERE code_hash = ? AND used_at IS NULL AND expires_at > ?
                           RETURNING project_id, device_name, machine_id, created_by""", (now_iso(), h, now_iso()))
         if not rows or not self.project(rows[0]["project_id"]):
             return None
         r = rows[0]
-        device_id, key = self.create_device(r["project_id"], r["device_name"], r["machine_id"])
-        return {"project_id": r["project_id"], "device_id": device_id, "device_key": key, "device_name": r["device_name"],
+        name = (device_name or "").strip()[:60] or r["device_name"]
+        device_id, key = self.create_device(r["project_id"], name, r["machine_id"], pending=True)
+        return {"project_id": r["project_id"], "device_id": device_id, "device_key": key, "device_name": name,
                 "machine_id": r["machine_id"], "paired_by": r["created_by"]}
+
+    def approve_device(self, project_id: str, device_id: str) -> dict | None:
+        cutoff = _iso(datetime.now(timezone.utc) - APPROVAL_TTL)
+        rows = self._q("""UPDATE devices SET pending = 0 WHERE project_id = ? AND id = ? AND pending = 1
+                          AND revoked_at IS NULL AND created_at > ? RETURNING id, name""", (project_id, device_id, cutoff))
+        return rows[0] if rows else None
+
+    def device_status(self, project_id: str, device_key: str) -> str | None:
+        """What a paired device is waiting for: pending | approved | rejected | expired (None: unknown key)."""
+        rows = self._q("SELECT pending, revoked_at, created_at FROM devices WHERE project_id = ? AND key_hash = ?",
+                       (project_id, hash_key(device_key)))
+        if not rows or not self.project(project_id):
+            return None
+        d = rows[0]
+        if d["revoked_at"]:
+            return "rejected"
+        if d["pending"]:
+            return "expired" if d["created_at"] < _iso(datetime.now(timezone.utc) - APPROVAL_TTL) else "pending"
+        return "approved"
 
     def revoke_device(self, project_id: str, device_id: str) -> bool:
         rows = self._q("UPDATE devices SET revoked_at = ? WHERE project_id = ? AND id = ? AND revoked_at IS NULL RETURNING id",
@@ -316,16 +344,37 @@ class Database:
         return bool(rows)
 
     def device_by_key(self, project_id: str, device_key: str) -> dict | None:
-        rows = self._q("SELECT * FROM devices WHERE project_id = ? AND key_hash = ? AND revoked_at IS NULL",
+        """An approved, not revoked device (a device waiting for approval cannot send audio yet)."""
+        rows = self._q("SELECT * FROM devices WHERE project_id = ? AND key_hash = ? AND revoked_at IS NULL AND pending = 0",
                        (project_id, hash_key(device_key)))
         return rows[0] if rows and self.project(project_id) else None
 
     def devices(self, project_id: str) -> list[dict]:
-        return self._q("""SELECT id, name, machine_id, created_at, last_seen_at FROM devices
-                          WHERE project_id = ? AND revoked_at IS NULL ORDER BY name""", (project_id,))
+        """Approved devices, plus devices waiting for approval (pending: true) that have not expired."""
+        cutoff = _iso(datetime.now(timezone.utc) - APPROVAL_TTL)
+        rows = self._q("""SELECT d.id, d.name, d.machine_id, d.created_at, d.last_seen_at, d.pending,
+                                 b.created_at AS learned_at
+                          FROM devices d LEFT JOIN baselines b ON b.device_id = d.id
+                          WHERE d.project_id = ? AND d.revoked_at IS NULL AND (d.pending = 0 OR d.created_at > ?)
+                          ORDER BY d.name""", (project_id, cutoff))
+        return [{**r, "pending": bool(r["pending"])} for r in rows]
 
     def touch_device(self, device_id: str) -> None:
         self._q("UPDATE devices SET last_seen_at = ? WHERE id = ?", (now_iso(), device_id))
+
+    # --- learned normal sound (on-site baseline per device) ------------------------------------
+    def baseline(self, device_id: str) -> dict | None:
+        rows = self._q("SELECT * FROM baselines WHERE device_id = ?", (device_id,))
+        return rows[0] if rows else None
+
+    def save_baseline(self, project_id: str, device_id: str, machine_id: str, data: str, windows: int) -> None:
+        self._q("""INSERT INTO baselines (device_id, project_id, machine_id, data, windows, created_at) VALUES (?,?,?,?,?,?)
+                   ON CONFLICT (device_id) DO UPDATE SET data = excluded.data, windows = excluded.windows,
+                   machine_id = excluded.machine_id, created_at = excluded.created_at""",
+                (device_id, project_id, machine_id, data, windows, now_iso()))
+
+    def delete_baseline(self, device_id: str) -> None:
+        self._q("DELETE FROM baselines WHERE device_id = ?", (device_id,))
 
     # --- subscribers ---------------------------------------------------------------------------
     def ensure_subscriber(self, project_id: str, name: str, channel: str, target: str) -> None:

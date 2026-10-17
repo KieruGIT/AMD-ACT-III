@@ -8,7 +8,8 @@ import { Button, Panel } from '../ui/primitives';
 import { RowMenu, type RowAction } from '../ui/RowMenu';
 
 const RANK: Record<Role, number> = { viewer: 1, admin: 2, owner: 3 };
-const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' };
+// Plain words: viewers watch and get alerts; editors also manage devices and members; owners also manage owners.
+const ROLE_LABEL: Record<Role, string> = { owner: 'Owner', admin: 'Can edit', viewer: 'Can view' };
 
 const ACTION: Record<string, string> = {
   'workspace.created': 'created the workspace',
@@ -20,6 +21,10 @@ const ACTION: Record<string, string> = {
   'device.pairing_code_created': 'created a pairing code for',
   'device.paired': 'paired',
   'device.revoked': 'removed device',
+  'device.requested': 'asked to join:',
+  'device.rejected': 'rejected device',
+  'device.learned': 'learned its normal sound',
+  'device.relearn': 'asked a device to re-learn its normal sound',
   'alerts.email_on': 'turned alert e-mails on',
   'alerts.email_off': 'turned alert e-mails off',
   'alert.acknowledged': 'acknowledged an alert',
@@ -87,14 +92,14 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
     }
   }
 
-  const grantable = (['viewer', 'admin', 'owner'] as Role[]).filter((r) => RANK[r] <= RANK[myRole]);
+  const grantable = (['viewer', 'admin'] as Role[]).filter((r) => RANK[r] <= RANK[myRole]); // owner: from the ⋯ menu
 
   function memberActions(m: Member): RowAction[] {
     const self = m.user_id === me;
     const out: RowAction[] = [];
     if (myRole === 'owner' && !self) {
-      for (const r of ['owner', 'admin', 'viewer'] as Role[]) {
-        out.push({ label: `Make ${ROLE_LABEL[r].toLowerCase()}`, current: m.role === r, onClick: () => void act(() => api.changeRole(m.user_id, r)) });
+      for (const r of ['viewer', 'admin', 'owner'] as Role[]) {
+        out.push({ label: r === 'owner' ? 'Make owner' : ROLE_LABEL[r], current: m.role === r, onClick: () => void act(() => api.changeRole(m.user_id, r)) });
       }
     }
     if (self) {
@@ -110,7 +115,7 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
       title="Members"
       labelledBy="members-title"
       actions={
-        isAdmin && !isGuest && !adding ? (
+        isAdmin && !adding ? (
           <Button variant="ghost" className="min-h-9 gap-1 px-3 text-xs" onClick={() => (setAdding(true), setNotice(null))}>
             <Plus aria-hidden className="size-3.5" />
             Add
@@ -119,13 +124,22 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
       }
     >
       {isGuest ? (
-        <p className="text-sm text-ink-muted">
-          Guest workspaces are private to this browser and send no e-mails.{' '}
-          <a href="/signin" className="font-semibold text-teal hover:underline">
-            Create an account
-          </a>{' '}
-          to add members.
-        </p>
+        adding ? (
+          <div className="grid gap-2 rounded-2xl bg-surface-muted p-4 text-sm">
+            <p className="font-semibold">Create an account to invite people</p>
+            <p className="text-ink-muted">Members are invited by e-mail and get alert e-mails, so they need a workspace that belongs to an account.</p>
+            <span className="flex gap-2">
+              <a href="/signin" className="inline-flex min-h-9 items-center rounded-full bg-teal px-4 text-xs font-semibold text-white hover:bg-teal-strong">
+                Create an account
+              </a>
+              <Button variant="ghost" className="min-h-9 px-3 text-xs" onClick={() => setAdding(false)}>
+                Not now
+              </Button>
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-muted">Guest workspaces are private to this browser and send no e-mails.</p>
+        )
       ) : (
         <>
           {adding && (
@@ -211,7 +225,10 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-xs text-ink-faint">Members get alert e-mails at the address they sign in with.</p>
+          <p className="mt-3 text-xs text-ink-faint">
+            Everyone here gets alert e-mails at the address they sign in with. <span className="text-ink-muted">Can view</span>: watch and
+            acknowledge alerts. <span className="text-ink-muted">Can edit</span>: also add or remove devices and members.
+          </p>
         </>
       )}
       <FormError>{error}</FormError>

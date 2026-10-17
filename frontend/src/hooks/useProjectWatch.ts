@@ -46,8 +46,9 @@ export function useProjectWatch(enabled: boolean) {
         overviewRef.current = ov;
         setOverview(ov);
         setOverviewError(null);
-        if (deviceRef.current && !ov.devices.some((d) => d.id === deviceRef.current)) selectDevice(null); // removed
-        if (!deviceRef.current && ov.devices[0]) selectDevice(ov.devices[0].id);
+        const active = ov.devices.filter((d) => !d.pending); // waiting for approval: nothing to watch yet
+        if (deviceRef.current && !active.some((d) => d.id === deviceRef.current)) selectDevice(null); // removed
+        if (!deviceRef.current && active[0]) selectDevice(active[0].id);
       } catch (err) {
         if ((err as Error).name !== 'AbortError') setOverviewError((err as Error).message);
       }
@@ -66,7 +67,7 @@ export function useProjectWatch(enabled: boolean) {
     if (!enabled || !httpClient) return;
     const ctrl = new AbortController();
     const onMessage = (m: StreamMessage) => {
-      if (m.type === 'device_revoked') {
+      if (m.type === 'device_revoked' || m.type === 'device_request' || m.type === 'device_approved' || m.type === 'device_learned' || m.type === 'device_relearn') {
         reloadRef.current();
         return;
       }

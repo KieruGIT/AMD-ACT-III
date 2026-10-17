@@ -24,7 +24,8 @@ export function WatchBar({
     return <p role="alert" className="text-sm text-anomaly">Can't load the workspace: {error}.</p>;
   }
   if (!overview) return <p className="text-sm text-ink-faint">Loading project…</p>;
-  if (overview.devices.length === 0) {
+  const devices = overview.devices.filter((d) => !d.pending); // waiting for approval: nothing to watch yet
+  if (devices.length === 0) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="grid gap-0.5 text-sm">
@@ -49,7 +50,7 @@ export function WatchBar({
         <p className="text-xs text-ink-faint">Audio stays on the listening device; this screen receives scores and alerts.</p>
       </div>
       <ul role="radiogroup" aria-label="Listening device" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        {overview.devices.map((d) => {
+        {devices.map((d) => {
           const seen = d.last_seen_at ? now - Date.parse(d.last_seen_at) : Infinity;
           const online = seen < ONLINE_MS;
           const selected = d.id === deviceId;

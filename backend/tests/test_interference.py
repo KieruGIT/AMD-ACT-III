@@ -93,6 +93,8 @@ def test_api_flags_but_never_changes_status_or_alert(app, client, project):
     t = datetime.now(timezone.utc)
     results = [_post(client, project, i + 1, fan_audio(seed=i), t + timedelta(seconds=i)) for i in range(8)]
     app.state.interference = None
+    app.state.db.delete_baseline(project["device_id"])  # re-learn, so both runs see the same learning windows
+    app.state.hub.forget_device(project["device_id"])
     plain = [_post(client, project, i + 1, fan_audio(seed=i), t + timedelta(seconds=i), session="session-int02")
              for i in range(8)]
     for flagged, clean in zip(results, plain):
@@ -100,7 +102,7 @@ def test_api_flags_but_never_changes_status_or_alert(app, client, project):
         assert flagged["status"] == clean["status"] and flagged["anomaly_score"] == clean["anomaly_score"]
         assert flagged["alert"]["triggered"] == clean["alert"]["triggered"]
     assert results[-1]["note"].startswith("possible interference: speech")
-    # windows 1-5 only learn the dev scorer's baseline (not valid), so the policy counts windows 6-8
+    # windows 1-5 only learn the device's normal sound (not valid), so the policy counts windows 6-8
     last = results[-1]["interference"]
     assert last["recent_windows"] == 3 and last["recent_windows_flagged"] == 3 and last["recent_windows_unchecked"] == 0
 

@@ -32,7 +32,11 @@ export interface AccountApi {
   startGuest(): Promise<{ project_id: string; guest_key: string; expires_at: string }>;
   me(): Promise<Me>;
   createWorkspace(name: string): Promise<Workspace>;
-  pair(code: string): Promise<PairedDevice>;
+  pair(code: string, deviceName?: string): Promise<PairedDevice>;
+  /** A paired device asks whether it has been approved yet. */
+  pairStatus(projectId: string, deviceKey: string): Promise<{ status: 'pending' | 'approved' | 'rejected' | 'expired' }>;
+  approveDevice(deviceId: string): Promise<unknown>;
+  relearnDevice(deviceId: string): Promise<unknown>;
   members(): Promise<{ members: Member[]; invitations: Invitation[] }>;
   invite(email: string, role: Role): Promise<{ email: string; role: Role }>;
   cancelInvitation(email: string): Promise<unknown>;
@@ -93,7 +97,10 @@ export function createHttpClient(
     startGuest: () => json('/guest', body('POST')),
     me: () => json('/me'),
     createWorkspace: (name) => json('/workspaces', body('POST', { name })),
-    pair: (code) => json('/pair', body('POST', { code })),
+    pair: (code, deviceName) => json('/pair', body('POST', { code, device_name: deviceName })),
+    pairStatus: (projectId, deviceKey) => json('/pair/status', { headers: { 'X-Project-Id': projectId, 'X-Device-Key': deviceKey } }),
+    approveDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/approve`, body('POST')),
+    relearnDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/relearn`, body('POST')),
     members: () => json(`/projects/${pid()}/members`),
     invite: (email, role) => json(`/projects/${pid()}/invitations`, body('POST', { email, role })),
     cancelInvitation: (email) => json(`/projects/${pid()}/invitations/${encodeURIComponent(email)}`, body('DELETE')),

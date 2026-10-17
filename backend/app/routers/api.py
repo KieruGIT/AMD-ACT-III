@@ -14,6 +14,7 @@ from ..audio.wav import AudioError, decode_window
 from ..auth import principal
 from ..db import now_iso
 from ..notify import deliver
+from ..inference.heuristic import LEVEL_NOTE_DB as HEURISTIC_LEVEL_NOTE_DB
 from ..profiles import CONTRACT_VERSION, MAX_UPLOAD_BYTES, PROFILES, config_payload
 
 router = APIRouter(prefix="/api/v1")
@@ -28,6 +29,33 @@ def _device(request: Request, project_id: str | None, device_key: str | None):
     if not device:
         raise HTTPException(403, "unknown device key for this project")
     return device
+
+
+def _device_scorer_state(app, device) -> dict:
+    """Per-device scorer state, starting from the learned normal saved in the database (if any)."""
+    st = app.hub.device_scorer_state(device["id"])
+    if "baseline" not in st and "learning" not in st:
+        row = app.db.baseline(device["id"])
+        if row and row["machine_id"] == device["machine_id"]:
+            st["baseline"] = json.loads(row["data"])
+    return st
+
+
+def _learning_outcome(app, project_id: str, device, st: dict) -> tuple[dict | None, str | None]:
+    """Saves the learned normal once it locks; returns (learning progress, note) for the response."""
+    if st.pop("just_locked", False):
+        base = st["baseline"]
+        app.db.save_baseline(project_id, device["id"], device["machine_id"], json.dumps(base), base["windows"])
+        app.db.audit(project_id, f"device {device['name']}", "device.learned", f"{base['windows']} windows")
+        app.hub.publish(project_id, {"type": "device_learned", "device_id": device["id"]})
+        return None, "learned this machine's normal sound; now listening for changes"
+    if "baseline" not in st:
+        n, needed = st.get("progress", (0, 0))
+        return {"windows": n, "needed": needed}, f"learning this machine's normal sound ({n} of {needed})"
+    delta = st.get("level_delta_db", 0.0)
+    if abs(delta) >= HEURISTIC_LEVEL_NOTE_DB:
+        return None, f"much {'louder' if delta > 0 else 'quieter'} than the learned normal ({delta:+.0f} dB); judged on the sound's character, not its volume"
+    return None, None
 
 
 # --- public ------------------------------------------------------------------------------------
@@ -92,10 +120,15 @@ async def analyze_window(
         start_s = datetime.fromisoformat(recorded_at.replace("Z", "+00:00")).timestamp()
         flags_task = asyncio.ensure_future(
             run_in_threadpool(app.interference.analyze, window.samples, state.interference_state, start_s))
+    learning = None
     if window.quality == "ok":
-        s = await run_in_threadpool(scorer.score, window.samples, state.scorer_state)
+        on_site = getattr(scorer, "learns_on_site", False)
+        scorer_state = _device_scorer_state(app, device) if on_site else state.scorer_state
+        s = await run_in_threadpool(scorer.score, window.samples, scorer_state)
         score, threshold, model_ms = s.value, s.threshold, round(s.model_ms, 1)
-        if s.value is None:
+        if on_site:
+            learning, note = _learning_outcome(app, x_project_id, device, scorer_state)
+        elif s.value is None:
             note = "learning this session's baseline"
     interference = None
     if flags_task is not None:
@@ -155,6 +188,7 @@ async def analyze_window(
         "model_version": scorer.version,
         "spectrogram_overlay": None,
         "note": note,
+        "learning": learning,  # {"windows": n, "needed": N} while a device learns its normal sound, else null
     }
     if app.interference is not None:  # proposed v1.1 field; absent unless INTERFERENCE=flag
         result["interference"] = interference

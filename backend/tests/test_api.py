@@ -19,7 +19,7 @@ def send(client, project, seq, *, anomaly=False, session="session-0001", key=Non
 
 def test_health_and_config_are_public(client):
     h = client.get("/api/v1/health").json()
-    assert h == {"service": "ok", "model_ready": True, "mode": "heuristic", "model_version": "session-baseline-heuristic-0.1"}
+    assert h == {"service": "ok", "model_ready": True, "mode": "heuristic", "model_version": "learned-on-site-heuristic-0.2"}
     c = client.get("/api/v1/config").json()
     assert c["input"]["sample_rate_hz"] == 16_000 and 48_000 in c["input"]["accepted_sample_rates_hz"]
     assert c["score"]["is_probability"] is False
@@ -47,7 +47,9 @@ def test_end_to_end_baseline_normal_then_one_alert(client, project, monkeypatch)
     monkeypatch.setattr("app.routers.api.deliver", fake_deliver)
 
     results = [send(client, project, s).json() for s in range(1, 6)]
-    assert all(r["status"] == "unable_to_assess" and r["note"] for r in results)  # learning baseline
+    assert all(r["status"] == "unable_to_assess" and r["note"] for r in results[:4])  # learning its normal sound
+    assert [r["learning"] for r in results[:2]] == [{"windows": 1, "needed": 5}, {"windows": 2, "needed": 5}]
+    assert results[4]["learning"] is None and "learned" in results[4]["note"]  # locked after the 5th window
     normal = [send(client, project, s).json() for s in range(6, 12)]
     assert all(r["status"] == "normal" for r in normal)
     abnormal = [send(client, project, s, anomaly=True).json() for s in range(12, 30)]
@@ -100,3 +102,25 @@ def test_no_raw_audio_persisted(client, project, app):
     for t in tables:
         cols = [c["name"] for c in app.state.db._q(f"PRAGMA table_info({t['name']})")]
         assert not any("audio" in c or "pcm" in c for c in cols)
+
+
+def test_learned_normal_is_locked_per_device_across_sessions_and_can_be_relearned(client, project, app):
+    for s in range(1, 6):
+        send(client, project, s)
+    assert app.state.db.baseline(project["device_id"])["windows"] == 5  # saved, survives restarts
+    # a new session (or a server restart) does not learn again
+    app.state.hub.forget_device(project["device_id"])  # simulate a restart: memory gone, database kept
+    r = send(client, project, 1, session="session-0002").json()
+    assert r["status"] == "normal" and r["learning"] is None
+
+
+def test_louder_is_not_abnormal_but_a_new_sound_is(client, project):
+    for s in range(1, 6):
+        send(client, project, s)
+    from .conftest import fan_audio, to_wav
+    loud = send(client, project, 6, audio=to_wav(fan_audio(seed=6, gain=3.5))).json()
+    assert loud["status"] == "normal" and "louder" in (loud["note"] or "")
+    quiet = send(client, project, 7, audio=to_wav(fan_audio(seed=7, gain=0.25))).json()
+    assert quiet["status"] == "normal"
+    whine = send(client, project, 8, anomaly=True).json()
+    assert whine["status"] == "anomaly"

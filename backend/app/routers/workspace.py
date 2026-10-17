@@ -159,11 +159,13 @@ def pairing_code(project_id: str, body: NewPairing, request: Request, authorizat
 
 class Pair(BaseModel):
     code: str = Field(min_length=6, max_length=20)
+    device_name: str | None = Field(None, max_length=60)  # what the device calls itself, e.g. "iPhone · Safari"
 
 
 @router.post("/pair")
 def pair(body: Pair, request: Request):
-    """Redeem a pairing code. Returns the device credential ONCE; the device keeps it (never in a URL)."""
+    """Redeem a pairing code. Returns the device credential ONCE; the device keeps it (never in a URL). The device can
+    send audio only after an admin of the workspace approves it (GET /pair/status tells it when)."""
     ip = request.client.host if request.client else "?"
     fails, now = _pair_fails[ip], time.time()
     while fails and fails[0] < now - 600:
@@ -171,13 +173,54 @@ def pair(body: Pair, request: Request):
     if len(fails) >= PAIR_FAILS_PER_10_MIN:
         raise HTTPException(429, "too many wrong codes; wait a few minutes")
     db = request.app.state.db
-    d = db.redeem_pairing_code(body.code)
+    d = db.redeem_pairing_code(body.code, body.device_name)
     if not d:
         fails.append(now)
         raise HTTPException(404, "code not found, already used or expired")
     project = db.project(d["project_id"])
-    db.audit(d["project_id"], d["paired_by"], "device.paired", f"{d['device_name']} ({d['device_id']})")
-    return {**d, "project_name": project["name"], "is_guest": bool(project.get("is_guest"))}
+    db.audit(d["project_id"], d["paired_by"], "device.requested", d["device_name"])
+    request.app.state.hub.publish(d["project_id"], {"type": "device_request", "device_id": d["device_id"],
+                                                   "device_name": d["device_name"]})
+    return {**d, "status": "pending", "project_name": project["name"], "is_guest": bool(project.get("is_guest"))}
+
+
+@router.get("/pair/status")
+def pair_status(request: Request, x_project_id: str | None = Header(None), x_device_key: str | None = Header(None)):
+    """A paired device asks whether an admin has approved it: pending | approved | rejected | expired."""
+    if not x_project_id or not x_device_key:
+        raise HTTPException(401, "X-Project-Id and X-Device-Key headers are required")
+    status = request.app.state.db.device_status(x_project_id, x_device_key)
+    if status is None:
+        raise HTTPException(404, "unknown device")
+    return {"status": status}
+
+
+@router.post("/projects/{project_id}/devices/{device_id}/approve")
+def approve(project_id: str, device_id: str, request: Request, authorization: str | None = Header(None),
+            x_guest_key: str | None = Header(None)):
+    p = _caller(request, project_id, "admin", authorization, x_guest_key)
+    db = request.app.state.db
+    d = db.approve_device(project_id, device_id)
+    if not d:
+        raise HTTPException(404, "no device waiting for approval (expired, rejected or already approved)")
+    db.audit(project_id, p.actor, "device.paired", f"{d['name']} ({device_id})")
+    request.app.state.hub.publish(project_id, {"type": "device_approved", "device_id": device_id})
+    return {"ok": True}
+
+
+@router.post("/projects/{project_id}/devices/{device_id}/relearn")
+def relearn(project_id: str, device_id: str, request: Request, authorization: str | None = Header(None),
+            x_guest_key: str | None = Header(None)):
+    """Forget a device's learned normal sound; it learns again from the next minute of listening."""
+    p = _caller(request, project_id, "admin", authorization, x_guest_key)
+    db = request.app.state.db
+    if not any(d["id"] == device_id and not d["pending"] for d in db.devices(project_id)):
+        raise HTTPException(404, "device not found")
+    db.delete_baseline(device_id)
+    request.app.state.hub.forget_device(device_id)
+    db.audit(project_id, p.actor, "device.relearn", device_id)
+    request.app.state.hub.publish(project_id, {"type": "device_relearn", "device_id": device_id})
+    return {"ok": True}
 
 
 @router.post("/projects/{project_id}/devices/{device_id}/revoke")
@@ -185,9 +228,10 @@ def revoke(project_id: str, device_id: str, request: Request, authorization: str
            x_guest_key: str | None = Header(None)):
     p = _caller(request, project_id, "admin", authorization, x_guest_key)
     db = request.app.state.db
+    pending = any(d["id"] == device_id and d["pending"] for d in db.devices(project_id))
     if not db.revoke_device(project_id, device_id):
         raise HTTPException(404, "device not found or already revoked")
-    db.audit(project_id, p.actor, "device.revoked", device_id)
+    db.audit(project_id, p.actor, "device.rejected" if pending else "device.revoked", device_id)
     request.app.state.hub.publish(project_id, {"type": "device_revoked", "device_id": device_id})
     return {"ok": True}
 
