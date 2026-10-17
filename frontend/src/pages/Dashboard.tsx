@@ -15,6 +15,7 @@ import { SignalChain } from '../components/monitoring/SignalChain';
 import { StatusBanner } from '../components/monitoring/StatusBanner';
 import { WatchBar } from '../components/monitoring/WatchBar';
 import { Drawer } from '../components/ui/Drawer';
+import { DevicesSection } from '../components/workspace/DevicesSection';
 import { ManagePanel } from '../components/workspace/ManagePanel';
 import { Button, Panel, StatusChip } from '../components/ui/primitives';
 import { useMonitoringSession } from '../hooks/useMonitoringSession';
@@ -33,6 +34,7 @@ const DRAWER_TITLE: Record<DrawerId, string> = {
   model: 'Model & system',
   settings: 'Settings',
   workspace: 'Workspace',
+  devices: 'Add a device',
 };
 
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
@@ -168,7 +170,7 @@ export function Dashboard() {
               deviceId={watch.deviceId}
               onSelect={watch.selectDevice}
               now={now}
-              onAddDevice={canManage ? () => setDrawer('workspace') : undefined}
+              onAddDevice={canManage ? () => setDrawer('devices') : undefined}
             />
           ) : role === 'unconfigured' ? (
             <div className="grid gap-1 text-sm">
@@ -292,6 +294,9 @@ export function Dashboard() {
           <SettingsPanel deviceId={micId} onDevice={setMicId} sound={sound} onSound={setSound} locked={running} />
         )}
         {drawer === 'workspace' && watch.overview && <ManagePanel overview={watch.overview} profiles={profiles} onChanged={watch.reload} />}
+        {drawer === 'devices' && watch.overview && (
+          <DevicesSection overview={watch.overview} profiles={profiles} onChanged={watch.reload} hideEmptyList />
+        )}
       </Drawer>
     </div>
   );

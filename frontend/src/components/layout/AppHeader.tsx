@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Logo } from '../brand/Logo';
-export type DrawerId = 'alerts' | 'model' | 'settings' | 'workspace';
+export type DrawerId = 'alerts' | 'model' | 'settings' | 'workspace' | 'devices';
 
 const NAV: { id: DrawerId; label: string }[] = [
   { id: 'alerts', label: 'Alert history' },
@@ -31,7 +31,7 @@ export function AppHeader({
     <header className="sticky top-0 z-30 border-b border-line/80 bg-canvas/90 backdrop-blur">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3 sm:px-6 lg:px-8">
         <a href="/" aria-label="Machine Sound Monitor home">
-          <Logo subtitle="Experimental acoustic anomaly detection" />
+          <Logo />
         </a>
 
         <nav aria-label="Panels" className="order-3 -mx-1 flex w-full gap-1 overflow-x-auto xl:order-none xl:mx-0 xl:ml-auto xl:w-auto">

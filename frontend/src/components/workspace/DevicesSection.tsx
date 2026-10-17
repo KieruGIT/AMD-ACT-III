@@ -15,10 +15,12 @@ export function DevicesSection({
   overview,
   profiles,
   onChanged,
+  hideEmptyList = false,
 }: {
   overview: ProjectOverview;
   profiles: MachineProfile[];
   onChanged: () => void;
+  hideEmptyList?: boolean; // the "Add a device" panel shows only the pairing form until a device exists
 }) {
   const [name, setName] = useState('Phone at fan');
   const [machine, setMachine] = useState(profiles[0]?.id ?? 'fan_01');
@@ -77,6 +79,7 @@ export function DevicesSection({
 
   return (
     <div className="grid gap-6">
+      {!(hideEmptyList && overview.devices.length === 0) && (
       <section className="grid gap-3">
         <h3 className="text-sm font-semibold">Listening devices</h3>
         {overview.devices.length === 0 ? (
@@ -115,6 +118,7 @@ export function DevicesSection({
         )}
         <SectionNote>Removing a device revokes its key immediately. It stops being able to send audio.</SectionNote>
       </section>
+      )}
 
       <section className="grid gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-5">
         <h3 className="text-sm font-semibold">Add a device</h3>

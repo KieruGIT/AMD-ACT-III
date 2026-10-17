@@ -11,12 +11,13 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await expect(admin.getByText('Nothing is kept')).toBeVisible();
 
   await admin.getByRole('button', { name: 'Add a device' }).click();
-  const panel = admin.getByRole('dialog', { name: 'Workspace' });
-  await panel.getByLabel('Device name').fill('Phone at fan');
-  await panel.getByRole('button', { name: 'Get pairing code' }).click();
-  const code = (await panel.locator('p.num').first().textContent())!.trim();
+  const add = admin.getByRole('dialog', { name: 'Add a device' });
+  await expect(add.getByRole('tab')).toHaveCount(0); // just the pairing form, not the workspace settings
+  await add.getByLabel('Device name').fill('Phone at fan');
+  await add.getByRole('button', { name: 'Get pairing code' }).click();
+  const code = (await add.locator('p.num').first().textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-  await expect(panel.getByRole('img', { name: /QR code/ })).toBeVisible();
+  await expect(add.getByRole('img', { name: /QR code/ })).toBeVisible();
 
   const phone = await (await browser.newContext({ permissions: ['microphone'] })).newPage();
   await phone.goto(`/pair#code=${code}`);
@@ -27,8 +28,8 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await phone.getByRole('button', { name: 'Start monitoring' }).click();
   await expect(phone.getByTestId('assessment')).toHaveText(/Unable to assess|Normal|Abnormal/, { timeout: 30_000 });
 
-  await expect(panel.getByText('is paired')).toBeVisible({ timeout: 15_000 });
-  await panel.getByRole('button', { name: 'Close panel' }).click();
+  await expect(add.getByText('is paired')).toBeVisible({ timeout: 15_000 });
+  await add.getByRole('button', { name: 'Close panel' }).click();
   await expect(admin.getByText('listening now')).toBeVisible({ timeout: 20_000 });
   await expect(admin.getByTestId('assessment')).toHaveText(/Normal|Abnormal|Unable to assess/, { timeout: 30_000 });
 
@@ -40,6 +41,7 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
 
   // Removing the device cuts it off.
   await admin.getByRole('button', { name: 'Workspace', exact: true }).click();
+  const panel = admin.getByRole('dialog', { name: 'Workspace' });
   await panel.getByRole('button', { name: 'Remove' }).click();
   await panel.getByRole('button', { name: 'Revoke' }).click();
   await expect(panel.getByText('None yet')).toBeVisible();
