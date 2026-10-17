@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <style>.w{stroke:#1d5560}@media (prefers-color-scheme:dark){.w{stroke:#7fb7bf}}</style>
-  <path class="w" d="M3 32Q7 24 11 32T19 32M61 32Q57 24 53 32T45 32" fill="none" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M32 3Q35.5 28.5 47 32Q35.5 35.5 32 61Q28.5 35.5 17 32Q28.5 28.5 32 3Z" fill="#ef6a52" stroke="#ef6a52" stroke-width="2.5" stroke-linejoin="round"/>
+  <g fill="none" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <path class="w" d="M4 32H27M37 32L42 19L48 42L54 27L60 32"/>
+    <path d="M27 32L30 4L34 60L37 32" stroke="#ef6a52"/>
+  </g>
 </svg>

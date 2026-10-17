@@ -1,17 +1,13 @@
-// A steady machine hum (teal waves) running into the one sound that is different (the coral four-point star).
-// Previous marks: git tags landing-v1-photo-hero (four bars) and landing-v2-navy-logo (wave on a navy tile).
+// A steady line (teal) hit by one sound that is different (the tall coral peak), ringing out in smaller peaks to
+// the right; the flat line and the peak form a plus. Previous marks: git tags landing-v1-photo-hero (four bars),
+// landing-v2-navy-logo (wave on a navy tile), and e963795 (teal waves into a coral four-point star).
 export function LogoMark({ className = 'size-9' }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
-      <path
-        d="M3 32Q7 25 11 32T19 32M61 32Q57 25 53 32T45 32"
-        fill="none"
-        stroke="#1d5560"
-        strokeWidth="6.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M32 5Q35 29 46 32Q35 35 32 59Q29 35 18 32Q29 29 32 5Z" fill="#ef6a52" stroke="#ef6a52" strokeWidth="2" strokeLinejoin="round" />
+      <g fill="none" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 32H27M37 32L42 20L48 41L54 28L60 32" stroke="#1d5560" />
+        <path d="M27 32L30 5L34 59L37 32" stroke="#ef6a52" />
+      </g>
     </svg>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 // Motion graphic drawn straight onto the page (no frame): a field of flowing teal sound lines (the machine's steady
-// hum) with soft ripples from the source. Every cycle a coral four-point star (the logo's "different sound") travels
-// across the field and sends out its own ripples. Pure illustration, no model output.
+// hum) with soft ripples from the source. Every cycle a coral burst (the logo's "different sound") travels across
+// the field and sends out its own ripples. Pure illustration, no model output.
 // Previous heroes: git tags landing-v1-photo-hero (photo) and landing-v2-navy-logo (lines on a navy card).
 
 const LINES = 17;
@@ -17,20 +17,6 @@ const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
-
-function star(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) {
-  // Same four-point star as the logo: tall vertical points, shorter horizontal ones, concave sides.
-  const rx = r * 0.52;
-  const k = r * 0.11;
-  ctx.beginPath();
-  ctx.moveTo(x, y - r);
-  ctx.quadraticCurveTo(x + k, y - k, x + rx, y);
-  ctx.quadraticCurveTo(x + k, y + k, x, y + r);
-  ctx.quadraticCurveTo(x - k, y + k, x - rx, y);
-  ctx.quadraticCurveTo(x - k, y - k, x, y - r);
-  ctx.closePath();
-  ctx.fill();
-}
 
 function drawFrame(ctx: CanvasRenderingContext2D, w: number, h: number, elapsed: number) {
   const now = Math.max(0, elapsed) + FIRST_BURST_OFFSET_MS;
@@ -99,17 +85,15 @@ function drawFrame(ctx: CanvasRenderingContext2D, w: number, h: number, elapsed:
     ctx.stroke();
   }
 
-  // The burst itself: the logo's star, swelling in and out as it crosses.
+  // A soft coral glow around the burst, swelling in and out as it crosses.
   if (burst >= 0) {
     const env = smooth(0, 0.15, burst) * smooth(1, 0.82, burst);
-    const r = Math.min(w, h) * (0.07 + 0.025 * Math.sin(t * 9)) * env;
-    const halo = ctx.createRadialGradient(bx * w, sy, 0, bx * w, sy, r * 2.4);
-    halo.addColorStop(0, `rgba(${CORAL.join(',')}, ${0.28 * env})`);
+    const r = Math.min(w, h) * 0.17;
+    const halo = ctx.createRadialGradient(bx * w, sy, 0, bx * w, sy, r);
+    halo.addColorStop(0, `rgba(${CORAL.join(',')}, ${0.22 * env})`);
     halo.addColorStop(1, `rgba(${CORAL.join(',')}, 0)`);
     ctx.fillStyle = halo;
-    ctx.fillRect(bx * w - r * 2.4, sy - r * 2.4, r * 4.8, r * 4.8);
-    ctx.fillStyle = `rgba(${CORAL.join(',')}, ${env})`;
-    if (r > 0.5) star(ctx, bx * w, sy, r);
+    ctx.fillRect(bx * w - r, sy - r, r * 2, r * 2);
   }
   return burst >= 0;
 }
