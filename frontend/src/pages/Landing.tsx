@@ -131,10 +131,15 @@ export function Landing() {
               </a>
             ))}
           </nav>
-          <a href="/app" className="arrow-nudge ml-auto inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-navy-raised lg:ml-0">
-            Open console
-            <ArrowRight aria-hidden className="size-4" />
-          </a>
+          <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
+            <a href="/signin" className="inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:bg-surface-muted">
+              Sign in
+            </a>
+            <a href="/app" className="arrow-nudge inline-flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-navy-raised">
+              Open console
+              <ArrowRight aria-hidden className="size-4" />
+            </a>
+          </div>
         </div>
       </header>
 
@@ -160,8 +165,8 @@ export function Landing() {
               and alerts an operator, with the evidence of when, only when unusual sound persists.
             </p>
             <div className="fade-up mt-9 flex flex-wrap gap-3" style={delay(800)}>
-              <CTA href="/app">
-                Try the live demo
+              <CTA href="/signin">
+                Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
               <CTA href="#how" variant="secondary">How it works</CTA>
@@ -388,8 +393,8 @@ export function Landing() {
               </p>
             </div>
             <div className="relative flex flex-wrap gap-3">
-              <CTA href="/app" variant="light">
-                Open the console
+              <CTA href="/signin" variant="light">
+                Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
               <a href={REPO} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/40 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/10">

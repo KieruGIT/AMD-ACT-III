@@ -10,7 +10,7 @@ for (const [w, h] of [[1280, 720], [1366, 768], [1440, 900], [1536, 864], [1920,
     const hero = await page.getByTestId('hero').boundingBox();
     expect(hero).not.toBeNull();
     expect(hero!.y + hero!.height).toBeLessThanOrEqual(h + 1);
-    const cta = await page.getByRole('link', { name: 'Try the live demo' }).boundingBox();
+    const cta = await page.getByRole('link', { name: 'Get started' }).first().boundingBox();
     expect(cta!.y + cta!.height).toBeLessThanOrEqual(h);
     await page.waitForTimeout(2600); // let entry motion settle
     await page.screenshot({ path: `${SHOTS}/hero-${w}x${h}.png` });
@@ -52,9 +52,17 @@ test('reduced motion shows all content without animation', async ({ page }) => {
   await expect(page.getByText('Alerts an operator can believe.')).toBeVisible();
 });
 
-test('landing CTA opens the console', async ({ page }) => {
+test('landing CTA opens sign-in', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Try the live demo' }).click();
+  await page.getByRole('link', { name: 'Get started' }).first().click();
+  await expect(page).toHaveURL(/\/signin$/);
+  await expect(page.getByRole('button', { name: 'Continue as guest' })).toBeVisible();
+});
+
+test('header links to sign-in and the console', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/signin');
+  await page.getByRole('banner').getByRole('link', { name: 'Open console' }).click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('button', { name: 'Start monitoring' })).toBeVisible();
 });
