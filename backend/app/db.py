@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .alerting.policy import AlertEvent
 
-CHANNELS = ("email", "discord", "slack", "webhook")
+CHANNELS = ("email",)  # alerts go out by e-mail (Resend)
 ROLES = ("owner", "admin", "viewer")
 PAIRING_TTL = timedelta(minutes=10)
 GUEST_TTL = timedelta(hours=2)

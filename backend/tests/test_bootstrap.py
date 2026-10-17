@@ -3,7 +3,7 @@ from app.bootstrap import bootstrap
 from app.db import Database
 
 ENV = {"BOOTSTRAP_PROJECT_ID": "demo", "BOOTSTRAP_VIEWER_KEY": "vk_test", "BOOTSTRAP_DEVICE_KEY": "dk_test",
-       "BOOTSTRAP_SUBSCRIBERS": "discord:Ops:https://discord.test/webhook,email:Chris:chris@example.com"}
+       "BOOTSTRAP_SUBSCRIBERS": "email:Ops:ops@example.com,email:Chris:chris@example.com"}
 
 
 def test_bootstrap_is_idempotent_and_keys_work(tmp_path):
@@ -11,7 +11,7 @@ def test_bootstrap_is_idempotent_and_keys_work(tmp_path):
     assert bootstrap(db, ENV) == "demo" and bootstrap(db, ENV) == "demo"  # second start: no duplicates
     assert db.device_by_key("demo", "dk_test")["machine_id"] == "fan_01"
     assert len(db.devices("demo")) == 1 and len(db.subscribers("demo")) == 2
-    assert [s["target"] for s in db.subscribers("demo")][0] == "https://discord.test/webhook"
+    assert [s["target"] for s in db.subscribers("demo")][0] == "ops@example.com"
 
 
 def test_bootstrap_off_without_project_and_requires_keys(tmp_path):

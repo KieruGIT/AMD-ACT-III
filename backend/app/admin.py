@@ -2,7 +2,7 @@
 
     python -m app.admin create-project plant-a "Plant A"
     python -m app.admin add-device plant-a "Fan line 1" --machine fan_01
-    python -m app.admin add-subscriber plant-a "Maintenance" --discord https://discord.com/api/webhooks/...
+    python -m app.admin add-subscriber plant-a "Maintenance" --email maintenance@example.com
     python -m app.admin list plant-a
 
 Keys are printed once and stored only as hashes.
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     ls.add_argument("project_id")
 
     a = p.parse_args(argv)
-    db = Database(settings.db_path)
+    db = Database(settings.database_url or settings.db_path)  # same database the server uses
     app_url = settings.public_app_url.rstrip("/")
 
     if a.cmd == "create-project":

@@ -34,6 +34,8 @@ export function useProjectWatch(enabled: boolean) {
     setEvents(ov && id ? ov.events.filter((e) => e.device_id === id) : []);
   }, []);
 
+  const reloadRef = useRef<() => void>(() => undefined);
+
   // Device list (with last-seen) refreshes in the background.
   useEffect(() => {
     if (!enabled || !httpClient) return;
@@ -44,11 +46,13 @@ export function useProjectWatch(enabled: boolean) {
         overviewRef.current = ov;
         setOverview(ov);
         setOverviewError(null);
+        if (deviceRef.current && !ov.devices.some((d) => d.id === deviceRef.current)) selectDevice(null); // removed
         if (!deviceRef.current && ov.devices[0]) selectDevice(ov.devices[0].id);
       } catch (err) {
         if ((err as Error).name !== 'AbortError') setOverviewError((err as Error).message);
       }
     };
+    reloadRef.current = () => void load();
     void load();
     const t = setInterval(load, OVERVIEW_POLL_MS);
     return () => {
@@ -62,6 +66,10 @@ export function useProjectWatch(enabled: boolean) {
     if (!enabled || !httpClient) return;
     const ctrl = new AbortController();
     const onMessage = (m: StreamMessage) => {
+      if (m.type === 'device_revoked') {
+        reloadRef.current();
+        return;
+      }
       if (m.type === 'event') {
         if (m.event.device_id === deviceRef.current) upsertEvent(m.event);
         return;
@@ -117,5 +125,6 @@ export function useProjectWatch(enabled: boolean) {
     newAlert,
     dismissNewAlert: () => setNewAlert(null),
     acknowledge,
+    reload: () => reloadRef.current(),
   };
 }

@@ -6,7 +6,7 @@ import { AlertToast } from '../components/alerts/AlertToast';
 import { AnomalyTrendChart } from '../components/charts/AnomalyTrendChart';
 import { SpectrogramChart } from '../components/charts/SpectrogramChart';
 import { WaveformChart } from '../components/charts/WaveformChart';
-import { AppHeader, type DrawerId } from '../components/layout/AppHeader';
+import { AppHeader, type AccountMenu, type DrawerId } from '../components/layout/AppHeader';
 import { AssessmentCard } from '../components/monitoring/AssessmentCard';
 import { ControlBar } from '../components/monitoring/ControlBar';
 import { ModelInfoPanel } from '../components/monitoring/ModelInfoPanel';
@@ -15,25 +15,75 @@ import { SignalChain } from '../components/monitoring/SignalChain';
 import { StatusBanner } from '../components/monitoring/StatusBanner';
 import { WatchBar } from '../components/monitoring/WatchBar';
 import { Drawer } from '../components/ui/Drawer';
+import { ManagePanel } from '../components/workspace/ManagePanel';
 import { Button, Panel, StatusChip } from '../components/ui/primitives';
 import { useMonitoringSession } from '../hooks/useMonitoringSession';
 import { useNow } from '../hooks/useNow';
 import { useProjectWatch } from '../hooks/useProjectWatch';
 import { playAlertTone } from '../lib/alertSound';
+import { clearCredentials, credentials } from '../lib/credentials';
+import { accessToken } from '../lib/supabase';
 import { timeZoneLabel } from '../lib/format';
 import { assessmentView } from '../lib/sessionReducer';
 import { modeLabel } from '../lib/status';
+import { signOut } from '../lib/session';
 
 const DRAWER_TITLE: Record<DrawerId, string> = {
   alerts: 'Alert history',
   model: 'Model & system',
   settings: 'Settings',
+  workspace: 'Workspace',
 };
+
+const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+function accountMenu(overviewName: string | undefined, overviewRole: keyof typeof ROLE_LABEL | undefined): AccountMenu | null {
+  const name = credentials?.projectName ?? overviewName ?? 'Workspace';
+  switch (role) {
+    case 'member':
+      return {
+        title: name,
+        subtitle: overviewRole ? ROLE_LABEL[overviewRole] : 'Member',
+        actions: [
+          { label: 'Switch workspace', onClick: () => location.assign('/workspaces?choose') },
+          { label: 'Sign out', onClick: () => void signOut() },
+        ],
+      };
+    case 'guest':
+      return {
+        title: 'Guest workspace',
+        subtitle: credentials?.expiresAt ? `Deleted at ${clock(credentials.expiresAt)}` : 'Temporary',
+        actions: [
+          { label: 'Create an account', onClick: () => location.assign('/signin') },
+          { label: 'Leave guest workspace', onClick: () => (clearCredentials(), location.assign('/signin')) },
+        ],
+      };
+    case 'device':
+      return {
+        title: credentials?.deviceName ?? 'Listening device',
+        subtitle: `Listening device · ${credentials?.projectName ?? 'workspace'}`,
+        actions: [
+          {
+            label: 'Unpair this browser',
+            onClick: () => {
+              clearCredentials();
+              void accessToken().then((t) => location.assign(t ? '/workspaces?choose' : '/signin'));
+            },
+          },
+        ],
+      };
+    case 'viewer':
+      return { title: name, subtitle: 'View-only link', actions: [{ label: 'Sign in', onClick: () => location.assign('/signin') }] };
+    default:
+      return null;
+  }
+}
 
 export function Dashboard() {
   const session = useMonitoringSession();
-  // A viewer link watches a remote listening device instead of capturing locally.
-  const watching = role === 'viewer';
+  // Members, guests and viewer links watch remote listening devices instead of capturing locally.
+  const watching = role === 'viewer' || role === 'member' || role === 'guest';
   const watch = useProjectWatch(watching);
   const vm = watching ? watch : session;
   const { state, events } = vm;
@@ -45,6 +95,11 @@ export function Dashboard() {
   const [machineId, setMachineId] = useState('');
   const [micId, setMicId] = useState<string | null>(null);
   const [sound, setSound] = useState(false);
+  const canManage = watching && (watch.overview?.role === 'owner' || watch.overview?.role === 'admin') && watch.overview?.access !== 'viewer_key';
+
+  useEffect(() => {
+    if (role === 'unconfigured') location.replace('/signin'); // live mode needs a workspace (or a paired device)
+  }, []);
 
   const profiles = backend.config?.supported_profiles ?? [];
   const profile = profiles.find((p) => p.id === machineId) ?? profiles[0];
@@ -68,7 +123,24 @@ export function Dashboard() {
 
   return (
     <div className="min-h-dvh">
-      <AppHeader openAlerts={events.filter((e) => e.ended_at === null).length} onOpen={setDrawer} />
+      <AppHeader
+        openAlerts={events.filter((e) => e.ended_at === null).length}
+        onOpen={setDrawer}
+        canManage={canManage}
+        account={accountMenu(watch.overview?.name, watch.overview?.role)}
+      />
+
+      {role === 'guest' && credentials?.expiresAt && (
+        <div className="border-b border-warning/20 bg-warning-soft">
+          <p className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm text-warning sm:px-6 lg:px-8">
+            <span className="font-semibold">Guest workspace</span>
+            <span>Nothing is kept: it and everything in it is deleted at {clock(credentials.expiresAt)}.</span>
+            <a href="/signin" className="font-semibold underline underline-offset-4">
+              Create an account to keep your work
+            </a>
+          </p>
+        </div>
+      )}
 
       <main className="mx-auto grid max-w-[1440px] gap-5 px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-8">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
@@ -90,7 +162,14 @@ export function Dashboard() {
 
         <Panel className="!p-4 sm:!p-5">
           {watching ? (
-            <WatchBar overview={watch.overview} error={watch.overviewError} deviceId={watch.deviceId} onSelect={watch.selectDevice} now={now} />
+            <WatchBar
+              overview={watch.overview}
+              error={watch.overviewError}
+              deviceId={watch.deviceId}
+              onSelect={watch.selectDevice}
+              now={now}
+              onAddDevice={canManage ? () => setDrawer('workspace') : undefined}
+            />
           ) : role === 'unconfigured' ? (
             <div className="grid gap-1 text-sm">
               <p className="font-semibold">This console isn't linked to a project yet.</p>
@@ -212,6 +291,7 @@ export function Dashboard() {
         {drawer === 'settings' && (
           <SettingsPanel deviceId={micId} onDevice={setMicId} sound={sound} onSound={setSound} locked={running} />
         )}
+        {drawer === 'workspace' && watch.overview && <ManagePanel overview={watch.overview} profiles={profiles} onChanged={watch.reload} />}
       </Drawer>
     </div>
   );

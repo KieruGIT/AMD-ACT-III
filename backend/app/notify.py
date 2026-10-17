@@ -1,4 +1,4 @@
-"""Alert delivery to a project's registered people. One message per event open and per recovery."""
+"""E-mail (via Resend) to a workspace's alert recipients, one per event open and per recovery; and invitation mails."""
 from __future__ import annotations
 
 import logging
@@ -27,29 +27,40 @@ def format_message(kind: str, project: dict, device: dict, event: dict) -> tuple
     return subject, body
 
 
+async def _send_email(http: httpx.AsyncClient, to: str, subject: str, text: str) -> None:
+    if not settings.resend_api_key:
+        raise RuntimeError("RESEND_API_KEY not configured")
+    (await http.post("https://api.resend.com/emails", headers={"Authorization": f"Bearer {settings.resend_api_key}"},
+                     json={"from": settings.email_from, "to": [to], "subject": subject, "text": text})).raise_for_status()
+
+
 async def deliver(subscribers: list[dict], kind: str, project: dict, device: dict, event: dict,
                   transport: httpx.AsyncBaseTransport | None = None) -> list[str]:
-    """Sends to every subscriber; failures are logged, never raised into the request."""
+    """E-mails every recipient; failures are logged, never raised into the request."""
     subject, body = format_message(kind, project, device, event)
     sent: list[str] = []
     async with httpx.AsyncClient(timeout=10, transport=transport) as http:
         for sub in subscribers:
+            if sub["channel"] != "email":
+                continue  # rows from before alerts became e-mail only
             try:
-                ch, target = sub["channel"], sub["target"]
-                if ch == "discord":
-                    (await http.post(target, json={"content": body})).raise_for_status()
-                elif ch == "slack":
-                    (await http.post(target, json={"text": body})).raise_for_status()
-                elif ch == "webhook":
-                    (await http.post(target, json={"kind": kind, "subject": subject, "text": body, "event": event})).raise_for_status()
-                elif ch == "email":
-                    if not settings.resend_api_key:
-                        raise RuntimeError("RESEND_API_KEY not configured")
-                    (await http.post("https://api.resend.com/emails",
-                                     headers={"Authorization": f"Bearer {settings.resend_api_key}"},
-                                     json={"from": settings.email_from, "to": [target], "subject": subject,
-                                           "text": body})).raise_for_status()
-                sent.append(f"{ch}:{sub['name']}")
+                await _send_email(http, sub["target"], subject, body)
+                sent.append(f"email:{sub['name']}")
             except Exception as err:
-                log.warning("alert delivery to %s (%s) failed: %s", sub["name"], sub["channel"], err)
+                log.warning("alert e-mail to %s failed: %s", sub["name"], err)
     return sent
+
+
+async def send_invitation(email: str, workspace: str, role: str, invited_by: str,
+                          transport: httpx.AsyncBaseTransport | None = None) -> bool:
+    """Tells an invited person how to join. The invitation itself works without this mail (it is accepted on sign-in)."""
+    link = f"{settings.public_app_url.rstrip('/')}/signin"
+    text = (f"{invited_by} invited you to the workspace \"{workspace}\" on Machine Sound Monitor as {role}.\n"
+            f"Sign in or create an account with this e-mail address ({email}) to join: {link}")
+    try:
+        async with httpx.AsyncClient(timeout=10, transport=transport) as http:
+            await _send_email(http, email, f"You're invited to {workspace}", text)
+        return True
+    except Exception as err:
+        log.warning("invitation e-mail to %s failed: %s", email, err)
+        return False

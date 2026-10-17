@@ -11,25 +11,41 @@ export function WatchBar({
   deviceId,
   onSelect,
   now,
+  onAddDevice,
 }: {
   overview: ProjectOverview | null;
   error: string | null;
   deviceId: string | null;
   onSelect: (id: string) => void;
   now: number;
+  onAddDevice?: () => void;
 }) {
   if (error && !overview) {
-    return <p role="alert" className="text-sm text-anomaly">Can't load the project: {error}. Check the dashboard link.</p>;
+    return <p role="alert" className="text-sm text-anomaly">Can't load the workspace: {error}.</p>;
   }
   if (!overview) return <p className="text-sm text-ink-faint">Loading project…</p>;
   if (overview.devices.length === 0) {
-    return <p className="text-sm text-ink-muted">No listening devices in {overview.name} yet. Add one with the admin CLI.</p>;
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-0.5 text-sm">
+          <p className="font-semibold">No listening devices in {overview.name} yet.</p>
+          <p className="text-ink-muted">
+            {onAddDevice ? 'Pair a phone, laptop or sensor placed next to the machine.' : 'Ask a workspace admin to pair one.'}
+          </p>
+        </div>
+        {onAddDevice && (
+          <button type="button" onClick={onAddDevice} className="inline-flex min-h-11 items-center rounded-full bg-teal px-5 text-sm font-semibold text-white hover:bg-teal-strong">
+            Add a device
+          </button>
+        )}
+      </div>
+    );
   }
 
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="eyebrow text-ink-faint">Watching project · {overview.name}</p>
+        <p className="eyebrow text-ink-faint">Watching workspace · {overview.name}</p>
         <p className="text-xs text-ink-faint">Audio stays on the listening device; this screen receives scores and alerts.</p>
       </div>
       <ul role="radiogroup" aria-label="Listening device" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">

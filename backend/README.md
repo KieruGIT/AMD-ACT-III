@@ -7,7 +7,7 @@ to **dashboards** on any screen.
 
 ```text
 device (project id + device key) ──POST /analyze-window──▶ API: validate → resample 16 kHz → score → alert policy
-                                                             ├─▶ notify subscribers (e-mail / Discord / Slack / webhook)
+                                                             ├─▶ e-mail alert recipients (Resend)
 dashboard (project id + viewer key) ◀──GET /projects/{id}/stream (SSE)──┘
 ```
 
@@ -29,7 +29,7 @@ pytest
 ```bash
 python -m app.admin create-project plant-a "Plant A"            # prints the dashboard link (viewer key)
 python -m app.admin add-device plant-a "Phone at fan" --machine fan_01   # prints the listener link (device key)
-python -m app.admin add-subscriber plant-a "Maintenance" --discord https://discord.com/api/webhooks/...
+python -m app.admin add-subscriber plant-a "Maintenance" --email maintenance@example.com
 python -m app.admin add-subscriber plant-a "Chris" --email chris@example.com   # needs RESEND_API_KEY in .env
 python -m app.admin list plant-a
 ```

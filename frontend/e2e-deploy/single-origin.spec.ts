@@ -8,7 +8,8 @@ const env = (k: string) => {
 
 test('deployed app: phone page streams to the same-origin API and the dashboard watches it', async ({ browser, request }) => {
   const project = env('DEPLOY_PROJECT');
-  const health = await (await request.get('/api/v1/health')).json();
+  // DEPLOY_API_URL when the API is on another host (Vercel frontend + Render API); empty = same origin
+  const health = await (await request.get(`${process.env.DEPLOY_API_URL ?? ''}/api/v1/health`)).json();
   expect(health.service).toBe('ok');
   expect(health.model_ready).toBe(true);
 

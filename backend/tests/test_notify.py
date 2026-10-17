@@ -13,23 +13,36 @@ PROJECT = {"id": "plant-a", "name": "Plant A"}
 DEVICE = {"name": "Phone at fan"}
 
 
-def test_delivers_discord_and_slack_and_survives_a_failure():
+def test_email_only_and_a_failure_does_not_stop_the_rest(monkeypatch):
+    monkeypatch.setattr(notify, "settings", dataclasses.replace(notify.settings, resend_api_key="re_test"))
     seen = []
 
     def handler(req: httpx.Request) -> httpx.Response:
-        seen.append((str(req.url), json.loads(req.content)))
-        return httpx.Response(500 if "broken" in str(req.url) else 200, json={"ok": True})
+        to = json.loads(req.content)["to"][0]
+        seen.append(to)
+        return httpx.Response(500 if to.startswith("down") else 200, json={"id": "e"})
 
     subs = [
-        {"name": "Ops", "channel": "discord", "target": "https://discord.test/webhook"},
-        {"name": "Team", "channel": "slack", "target": "https://slack.test/hook"},
-        {"name": "Down", "channel": "webhook", "target": "https://broken.test/hook"},
+        {"name": "Down", "channel": "email", "target": "down@example.com"},
+        {"name": "Old", "channel": "discord", "target": "https://discord.test/webhook"},  # legacy row: skipped
+        {"name": "Ops", "channel": "email", "target": "ops@example.com"},
     ]
     sent = asyncio.run(notify.deliver(subs, "opened", PROJECT, DEVICE, EVENT, transport=httpx.MockTransport(handler)))
-    assert sent == ["discord:Ops", "slack:Team"]  # the failing webhook is logged, not raised
-    dc_url, dc_body = seen[0]
-    assert dc_url == "https://discord.test/webhook"
-    assert "Persistent acoustic anomaly on Phone at fan" in dc_body["content"] and "not a probability" in dc_body["content"]
+    assert sent == ["email:Ops"] and seen == ["down@example.com", "ops@example.com"]
+
+
+def test_invitation_mail(monkeypatch):
+    monkeypatch.setattr(notify, "settings", dataclasses.replace(notify.settings, resend_api_key="re_test",
+                                                                public_app_url="https://msm.test"))
+    seen = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(req.content))
+        return httpx.Response(200, json={"id": "e"})
+
+    ok = asyncio.run(notify.send_invitation("new@example.com", "Plant A", "viewer", "boss@example.com",
+                                            transport=httpx.MockTransport(handler)))
+    assert ok and seen[0]["to"] == ["new@example.com"] and "https://msm.test/signin" in seen[0]["text"]
 
 
 def test_email_goes_through_resend(monkeypatch):

@@ -124,21 +124,85 @@ export interface DeviceSummary {
   id: string;
   name: string;
   machine_id: string;
+  created_at?: string;
   last_seen_at: string | null;
   latest: WindowResult | null;
 }
+
+export type Role = 'owner' | 'admin' | 'viewer';
 
 export interface ProjectOverview {
   id: string;
   name: string;
   devices: DeviceSummary[];
   events: (AlertEvent & { device_id: string })[];
+  role?: Role;
+  access?: 'user' | 'guest' | 'viewer_key';
+  is_guest?: boolean;
+  expires_at?: string | null;
 }
 
 export type StreamMessage = { replay?: boolean } & (
   | { type: 'window'; device_id: string; device_name: string; result: WindowResult; event: AlertEvent | null }
   | { type: 'event'; event: AlertEvent & { device_id: string } }
+  | { type: 'device_revoked'; device_id: string }
 );
+
+// --- Accounts and administration (backend/app/routers/workspace.py) ---
+export interface Workspace {
+  id: string;
+  name: string;
+  role: Role;
+}
+
+export interface Me {
+  user: { id: string; email: string };
+  workspaces: Workspace[];
+}
+
+export interface Member {
+  user_id: string;
+  email: string;
+  role: Role;
+  created_at: string;
+}
+
+export interface Invitation {
+  email: string;
+  role: Role;
+  invited_by: string;
+  created_at: string;
+}
+
+export interface PairingCode {
+  code: string;
+  expires_at: string;
+  device_name: string;
+  machine_id: string;
+}
+
+export interface PairedDevice {
+  project_id: string;
+  project_name: string;
+  device_id: string;
+  device_key: string;
+  device_name: string;
+  machine_id: string;
+  is_guest: boolean;
+}
+
+export interface Recipient {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export interface AuditEntry {
+  actor: string;
+  action: string;
+  detail: string | null;
+  at: string;
+}
 
 export interface MonitoringClient {
   readonly mode: 'mock' | 'live';

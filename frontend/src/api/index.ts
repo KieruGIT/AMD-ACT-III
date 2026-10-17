@@ -1,4 +1,5 @@
 import { credentials } from '../lib/credentials';
+import { accessToken } from '../lib/supabase';
 import { createHttpClient, type HttpClient } from './monitoringClient';
 import { createMockClient, type MockClient } from './mockMonitoringClient';
 
@@ -6,16 +7,26 @@ export const isMockMode = import.meta.env.VITE_MOCK_API !== 'false';
 
 export const client: HttpClient | MockClient = isMockMode
   ? createMockClient()
-  : createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', credentials);
+  : createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', credentials, accessToken);
 
 export const mockClient = isMockMode ? (client as MockClient) : null;
 export const httpClient = isMockMode ? null : (client as HttpClient);
 
-/** Live mode role from the setup link: a listening device, a watcher, or nothing configured yet. */
-export const role: 'mock' | 'device' | 'viewer' | 'unconfigured' = isMockMode
+/** Account calls that do not depend on the workspace this browser has open (sign-in, guest, pairing, my workspaces). */
+export const accounts = createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', null, accessToken).account;
+
+/**
+ * Live mode role of this browser: a listening device, a watcher of a workspace (signed-in member, guest, or legacy
+ * viewer link), or nothing chosen yet (the console sends you to sign in).
+ */
+export const role: 'mock' | 'device' | 'member' | 'guest' | 'viewer' | 'unconfigured' = isMockMode
   ? 'mock'
   : credentials?.deviceKey
     ? 'device'
-    : credentials?.viewerKey
-      ? 'viewer'
-      : 'unconfigured';
+    : credentials?.guestKey
+      ? 'guest'
+      : credentials?.member
+        ? 'member'
+        : credentials?.viewerKey
+          ? 'viewer'
+          : 'unconfigured';

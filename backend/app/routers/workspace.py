@@ -1,4 +1,5 @@
-"""Accounts and administration: guest mode, my workspaces, members/invitations, device pairing, alert recipients, audit.
+"""Accounts and administration: guest mode, my workspaces, members/invitations, device pairing, e-mail alert
+recipients, audit.
 
 Roles: owner (everything, incl. owners), admin (devices, members except owners, alert recipients), viewer (watch and
 acknowledge). Every change is written to the workspace audit log.
@@ -9,11 +10,12 @@ import re
 import time
 from collections import defaultdict, deque
 
-from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..auth import RANK, Principal, principal, require_user
-from ..db import CHANNELS, ROLES
+from ..db import ROLES
+from ..notify import send_invitation
 from ..profiles import PROFILES
 
 router = APIRouter(prefix="/api/v1")
@@ -73,8 +75,8 @@ class Invite(BaseModel):
 
 
 @router.post("/projects/{project_id}/invitations")
-def invite(project_id: str, body: Invite, request: Request, authorization: str | None = Header(None),
-           x_guest_key: str | None = Header(None)):
+def invite(project_id: str, body: Invite, request: Request, background: BackgroundTasks,
+           authorization: str | None = Header(None), x_guest_key: str | None = Header(None)):
     p = _caller(request, project_id, "admin", authorization, x_guest_key)
     if p.kind == "guest":
         raise HTTPException(403, "guest workspaces cannot invite people; create an account")
@@ -84,8 +86,10 @@ def invite(project_id: str, body: Invite, request: Request, authorization: str |
         raise HTTPException(403, "you cannot grant a role above your own")
     db = request.app.state.db
     db.invite(project_id, body.email.strip(), body.role, p.actor)
-    db.audit(project_id, p.actor, "member.invited", f"{body.email.strip().lower()} as {body.role}")
-    return {"email": body.email.strip().lower(), "role": body.role}
+    email = body.email.strip().lower()
+    db.audit(project_id, p.actor, "member.invited", f"{email} as {body.role}")
+    background.add_task(send_invitation, email, db.project(project_id)["name"], body.role, p.actor)
+    return {"email": email, "role": body.role}
 
 
 @router.delete("/projects/{project_id}/invitations/{email}")
@@ -187,34 +191,30 @@ def revoke(project_id: str, device_id: str, request: Request, authorization: str
     return {"ok": True}
 
 
-# --- alert recipients ---------------------------------------------------------------------------------------
-class Subscriber(BaseModel):
+# --- alert recipients (e-mail) -----------------------------------------------------------------------------
+class Recipient(BaseModel):
     name: str = Field(min_length=1, max_length=60)
-    channel: str
-    target: str = Field(min_length=3, max_length=500)
+    email: str = Field(min_length=3, max_length=254)
 
 
 @router.get("/projects/{project_id}/subscribers")
 def list_subscribers(project_id: str, request: Request, authorization: str | None = Header(None),
                      x_guest_key: str | None = Header(None)):
     _caller(request, project_id, "admin", authorization, x_guest_key)
-    subs = request.app.state.db.subscribers(project_id)
-    return [{**s, "target": _mask(s["channel"], s["target"])} for s in subs]  # webhook URLs are secrets
+    return [{"id": s["id"], "name": s["name"], "email": s["target"]}
+            for s in request.app.state.db.subscribers(project_id) if s["channel"] == "email"]
 
 
 @router.post("/projects/{project_id}/subscribers")
-def add_subscriber(project_id: str, body: Subscriber, request: Request, authorization: str | None = Header(None),
+def add_subscriber(project_id: str, body: Recipient, request: Request, authorization: str | None = Header(None),
                    x_guest_key: str | None = Header(None)):
     p = _caller(request, project_id, "admin", authorization, x_guest_key)
-    if body.channel not in CHANNELS:
-        raise HTTPException(422, f"channel must be one of {CHANNELS}")
-    if body.channel in ("discord", "slack", "webhook") and not body.target.startswith("https://"):
-        raise HTTPException(422, "webhook targets must be https:// URLs")
-    if body.channel == "email" and not EMAIL.match(body.target):
+    email = body.email.strip().lower()
+    if not EMAIL.match(email):
         raise HTTPException(422, "invalid e-mail address")
     db = request.app.state.db
-    db.add_subscriber(project_id, body.name.strip(), body.channel, body.target.strip())
-    db.audit(project_id, p.actor, "alerts.recipient_added", f"{body.name.strip()} via {body.channel}")
+    db.add_subscriber(project_id, body.name.strip(), "email", email)
+    db.audit(project_id, p.actor, "alerts.recipient_added", f"{body.name.strip()} <{email}>")
     return {"ok": True}
 
 
@@ -225,12 +225,6 @@ def delete_subscriber(project_id: str, subscriber_id: int, request: Request, aut
     request.app.state.db.remove_subscriber(project_id, subscriber_id)
     request.app.state.db.audit(project_id, p.actor, "alerts.recipient_removed", str(subscriber_id))
     return {"ok": True}
-
-
-def _mask(channel: str, target: str) -> str:
-    if channel in ("discord", "slack", "webhook"):
-        return target[: target.find("/", 8) + 1] + "…" if "/" in target[8:] else "…"
-    return target
 
 
 # --- audit ----------------------------------------------------------------------------------------------------

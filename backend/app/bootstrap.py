@@ -5,7 +5,7 @@ the dashboard/listener links must keep working. Set, as host secrets:
 
     BOOTSTRAP_PROJECT_ID=demo  BOOTSTRAP_VIEWER_KEY=vk_...  BOOTSTRAP_DEVICE_KEY=dk_...
     optional: BOOTSTRAP_PROJECT_NAME, BOOTSTRAP_DEVICE_NAME, BOOTSTRAP_MACHINE (default fan_01),
-              BOOTSTRAP_SUBSCRIBERS="email:Chris:chris@example.com,discord:Ops:https://discord.com/api/webhooks/..."
+              BOOTSTRAP_SUBSCRIBERS="email:Chris:chris@example.com,email:Ops:ops@example.com"
 
 Idempotent: existing rows are kept (the viewer key is re-applied so the configured link always works).
 Keys are stored only as hashes, as with the admin CLI. Nothing happens unless BOOTSTRAP_PROJECT_ID is set.

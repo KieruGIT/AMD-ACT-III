@@ -1,11 +1,12 @@
-// Four sound levels; the coral one is the sound that is different.
+// A steady machine hum with one burst that is different (the anomaly). Designed in Figma:
+// "Machine Sound Monitor — Brand" → Logo / Mark. Previous mark (four bars): git tag landing-v1-photo-hero.
 export function LogoMark({ className = 'size-9' }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
       <rect width="64" height="64" rx="16" fill="#111e3b" />
-      <g strokeWidth="7" strokeLinecap="round">
-        <path d="M15 27v10M26.3 21v22M49 25v14" stroke="#eef2f7" />
-        <path d="M37.7 14v36" stroke="#e5654e" />
+      <g fill="none" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 32Q12 27 15 32T21 32T26 32M38 32Q41 27 44 32T50 32T55 32" stroke="#7f8ba3" />
+        <path d="M26 32Q29 12 32 32T38 32" stroke="#e5654e" />
       </g>
     </svg>
   );
