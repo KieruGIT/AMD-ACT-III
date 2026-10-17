@@ -144,37 +144,36 @@ export function Landing() {
       </header>
 
       <main>
-        {/* Hero: full-bleed ribbon backdrop, text centred below it; sized to the first screen on desktop */}
+        {/* Hero: sized to the first screen on desktop */}
         <section
           data-testid="hero"
-          className="relative isolate flex min-h-[720px] flex-col items-center justify-center overflow-hidden px-4 py-14 sm:min-h-[760px] sm:px-6 lg:h-[calc(100svh-4rem)] lg:max-h-[900px] lg:min-h-[600px] lg:py-10"
+          className="mx-auto grid max-w-[1280px] gap-10 px-4 pt-10 pb-14 sm:px-6 sm:pt-14 lg:h-[calc(100svh-4rem)] lg:max-h-[860px] lg:min-h-[560px] lg:grid-cols-[1.02fr_1fr] lg:gap-14 lg:px-8 lg:py-10"
         >
-          <HeroVisual />
-          <div className="relative flex max-w-4xl flex-col items-center text-center">
+          <div className="flex flex-col justify-center">
             <h1
               aria-label={HEADLINE}
-              className="text-[clamp(2.5rem,min(5.4vw,8.2svh),5rem)] leading-[0.95] font-semibold tracking-[-0.045em] text-balance"
+              className="text-[clamp(2.6rem,min(5.4vw,9.6svh),5.25rem)] leading-[0.93] font-semibold tracking-[-0.045em]"
             >
               {HEADLINE.split(' ').map((w, i) => (
-                <span key={i} aria-hidden className="word mr-[0.22em] last:mr-0" style={{ '--i': i } as CSSProperties}>
+                <span key={i} aria-hidden className="word mr-[0.22em]" style={{ '--i': i } as CSSProperties}>
                   {w}
                 </span>
               ))}
             </h1>
-            <p className="fade-up mt-5 max-w-2xl text-[clamp(1rem,1.25vw,1.125rem)] leading-relaxed text-ink-muted" style={delay(650)}>
+            <p className="fade-up mt-6 max-w-xl text-[clamp(1rem,1.25vw,1.125rem)] leading-relaxed text-ink-muted" style={delay(650)}>
               A web console that listens to a supported machine, scores every audio window against its learned normal sound,
               and alerts an operator, with the evidence of when, only when unusual sound persists.
             </p>
-            <div className="fade-up mt-8 flex flex-wrap justify-center gap-3" style={delay(800)}>
+            <div className="fade-up mt-9 flex flex-wrap gap-3" style={delay(800)}>
               <CTA href="/signin">
                 Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
               <CTA href="#how" variant="secondary">How it works</CTA>
             </div>
-            <p className="fade-up mt-5 text-[10px] text-ink-faint" style={delay(950)}>
-              Illustration · not model output
-            </p>
+          </div>
+          <div className="h-[480px] sm:h-[560px] lg:h-auto">
+            <HeroVisual />
           </div>
         </section>
 
