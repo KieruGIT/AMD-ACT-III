@@ -1,0 +1,53 @@
+{
+  "version": "fan-conv-ae-20261017-055154",
+  "checkpoint": "models/fan_conv.pt",
+  "arch": "conv",
+  "trained_at": "20261017-055154",
+  "device": {
+    "torch": "2.11.0+cu128",
+    "hip": null,
+    "cuda": "12.8",
+    "device": "Tesla T4"
+  },
+  "gpu_evidence": null,
+  "data": {
+    "root": "data/dcase/fan",
+    "ids": "all",
+    "train_clips": 3308,
+    "val_clips": 367,
+    "val_windows": 2936
+  },
+  "hyperparameters": {
+    "epochs": 100,
+    "batch": 512,
+    "lr": 0.001,
+    "val_frac": 0.1,
+    "threshold_percentile": 99.0,
+    "seed": 0
+  },
+  "features": {
+    "sample_rate": 16000,
+    "n_fft": 1024,
+    "hop": 512,
+    "n_mels": 128,
+    "fmin": 0.0,
+    "fmax": 8000.0,
+    "frames": 5,
+    "patch": 32,
+    "patch_hop": 16
+  },
+  "timing_s": {
+    "features": 27.79,
+    "training": 276.02
+  },
+  "loss": {
+    "first": 0.503479073921487,
+    "last": 0.009943196245201506
+  },
+  "threshold": {
+    "value": 0.01495401822030545,
+    "method": "99.0th percentile of held-out normal windows",
+    "val_score_mean": 0.00910896050733608,
+    "val_score_max": 0.03823291137814522
+  }
+}

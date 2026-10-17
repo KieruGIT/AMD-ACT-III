@@ -24,3 +24,7 @@ datasets/
 # Result archives from ml/run_amd.sh
 amd-results-*.tgz
 models/
+
+# Deployment keys and links (contain credentials)
+deploy/.space.env
+deploy/.space-links.txt

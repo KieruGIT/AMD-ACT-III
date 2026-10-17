@@ -40,6 +40,22 @@ export interface WindowResult {
   };
   /** Proposed v1.1: why a window was not assessed (e.g. "learning this session's baseline"). */
   note?: string | null;
+  /** Proposed v1.1, present only when the backend runs with INTERFERENCE=flag. Never changes status or alerts. */
+  interference?: null | {
+    flags: ('speech' | 'transient')[];
+    speech_seconds?: number | null;
+    transients_in_window_s?: number[];
+    new_transients_at_s?: number[];
+    speech_detector?: string | null;
+    checked?: boolean;
+    // Over the windows the alert policy is currently counting (by window identity, reset by gaps):
+    recent_windows?: number;
+    recent_windows_flagged?: number;
+    recent_windows_unchecked?: number;
+    recent_flags?: ('speech' | 'transient')[];
+    errors?: string[];
+    affects_decision: false;
+  };
 }
 
 export interface HealthResponse {
@@ -92,6 +108,7 @@ export interface AlertEvent {
   threshold: number;
   reason: string;
   acknowledged_at: string | null; // acknowledgment is not repair
+  interference_note?: string | null; // INTERFERENCE=flag only: speech/impact seen when the event opened
 }
 
 export interface AnalyzeWindowInput {

@@ -61,6 +61,11 @@ export function AlertRow({
       {!compact && (
         <>
           <p className="mt-3 text-xs text-ink-muted">Trigger: {event.reason}.</p>
+          {event.interference_note ? (
+            <p className="mt-1 text-xs text-ink-muted" data-testid="event-interference">
+              Note: {event.interference_note}. The alert still stands.
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-ink-muted">
             {ongoing ? 'Recommended: inspect the machine and recheck. ' : ''}Evidence audio not retained (retention is off).
           </p>

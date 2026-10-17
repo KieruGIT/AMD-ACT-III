@@ -13,7 +13,6 @@ import argparse
 import re
 import sys
 
-import httpx
 
 from .db import CHANNELS, Database
 from .profiles import PROFILES
@@ -38,9 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     asb.add_argument("name")
     ch = asb.add_mutually_exclusive_group(required=True)
     for c in CHANNELS:
-        ch.add_argument(f"--{c}", metavar="CHAT_ID" if c == "telegram" else "TARGET")
-
-    sub.add_parser("telegram-chats", help="list chats that pressed Start on the bot (to get chat ids)")
+        ch.add_argument(f"--{c}", metavar="TARGET")
 
     ls = sub.add_parser("list")
     ls.add_argument("project_id")
@@ -67,15 +64,6 @@ def main(argv: list[str] | None = None) -> int:
         channel = next(c for c in CHANNELS if getattr(a, c))
         db.add_subscriber(a.project_id, a.name, channel, getattr(a, channel))
         print(f"{a.name} will be alerted via {channel}.")
-    elif a.cmd == "telegram-chats":
-        if not settings.telegram_bot_token:
-            p.error("set TELEGRAM_BOT_TOKEN first (from @BotFather)")
-        r = httpx.get(f"https://api.telegram.org/bot{settings.telegram_bot_token}/getUpdates", timeout=10).json()
-        chats = {u["message"]["chat"]["id"]: u["message"]["chat"] for u in r.get("result", []) if "message" in u}
-        if not chats:
-            print("No chats yet: open the bot in Telegram, press Start, then run this again.")
-        for cid, c in chats.items():
-            print(f"{cid}  {c.get('title') or c.get('first_name', '')} {c.get('username', '')}")
     elif a.cmd == "list":
         for d in db.devices(a.project_id):
             print(f"device  {d['id']}  {d['name']}  {d['machine_id']}  last seen {d['last_seen_at'] or 'never'}")

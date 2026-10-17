@@ -7,7 +7,7 @@ to **dashboards** on any screen.
 
 ```text
 device (project id + device key) ──POST /analyze-window──▶ API: validate → resample 16 kHz → score → alert policy
-                                                             ├─▶ notify subscribers (Telegram / Discord / Slack / webhook / email)
+                                                             ├─▶ notify subscribers (e-mail / Discord / Slack / webhook)
 dashboard (project id + viewer key) ◀──GET /projects/{id}/stream (SSE)──┘
 ```
 
@@ -29,10 +29,8 @@ pytest
 ```bash
 python -m app.admin create-project plant-a "Plant A"            # prints the dashboard link (viewer key)
 python -m app.admin add-device plant-a "Phone at fan" --machine fan_01   # prints the listener link (device key)
-python -m app.admin telegram-chats                               # after people press Start on your bot
-python -m app.admin add-subscriber plant-a "Chris" --telegram 123456789
 python -m app.admin add-subscriber plant-a "Maintenance" --discord https://discord.com/api/webhooks/...
-python -m app.admin add-subscriber plant-a "Chris" --email chris@example.com   # needs SMTP_* in .env
+python -m app.admin add-subscriber plant-a "Chris" --email chris@example.com   # needs RESEND_API_KEY in .env
 python -m app.admin list plant-a
 ```
 
@@ -68,6 +66,21 @@ percentile of distances from healthy **calibration** clips to the **reference** 
 abnormal clips are used only for the final metrics. The primary config (`pooled` layer, cosine, k=1) is fixed in
 advance; the layer/metric/k grid is exploratory. For a fair comparison with the autoencoder, use the DCASE layout:
 both then train/enroll on `train/` and are scored on the identical `test/` clips (`ml/run_amd.sh` does this).
+
+### Interference flags (`INTERFERENCE=flag`, default `off`)
+
+Marks windows that contain **speech** (Silero VAD, MIT, `pip install silero-vad`) or a **possible impact/transient**
+(spectral flux). Flags never change the score, the status or the alert decision: speech can coincide with a real
+fault, and a knock or rattle from the machine itself looks like an impact. A transient is counted once as an event
+but flags every overlapping window that contains it; a detector error only drops the flag. When enabled, responses
+carry an extra `interference` object (proposed v1.1 field; absent when off) and the dashboard shows
+"possible interference in N of the last M windows". Those M windows are exactly the ones the alert policy is counting
+(by `recorded_at`, reset by its gap rule). Windows whose flags were never computed count as unchecked, not clean.
+When an alert opens, that summary is stored with the event (`interference_note`) and included in the notification.
+Silero is stateful, so one window is analyzed at a time (a request that cannot get the detector within 0.25 s is
+reported `busy`). Flags run alongside scoring, and the API waits at most 0.8 s for them (`timeout`), so they never
+delay alerting. A timed-out result is discarded, never committed to the session state. Measure them on the real fan with
+`python -m ml.demo_fan stream ... --interference` before relying on them.
 
 ## API (prefix `/api/v1`)
 

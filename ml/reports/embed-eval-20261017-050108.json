@@ -1,0 +1,805 @@
+{
+  "stamp": "20261017-050108",
+  "data": "data/dcase",
+  "seed": 0,
+  "percentile": 99.0,
+  "primary": {
+    "layer": "pooled",
+    "metric": "cosine",
+    "k": 1
+  },
+  "encoder": {
+    "name": "panns-cnn14-16k",
+    "sha256": "e2ee543a27919542c2ea03eabaa70b24dcd4e6c8e05621de6b67a94e4c5058e6",
+    "frontend": {
+      "sample_rate": 16000,
+      "window_size": 512,
+      "hop_size": 160,
+      "mel_bins": 64,
+      "fmin": 50,
+      "fmax": 8000
+    }
+  },
+  "device": {
+    "torch": "2.11.0+cu128",
+    "hip": null,
+    "cuda": "12.8",
+    "device": "Tesla T4"
+  },
+  "groups": {
+    "fan/id_00": {
+      "clips": {
+        "reference": 729,
+        "calibration": 182,
+        "test": 507
+      },
+      "primary": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 407
+        },
+        "roc_auc": 0.49798525798525806,
+        "pauc_0.1": 0.4914004914004914,
+        "window_tpr_at_threshold": 0.017506142506142505,
+        "window_fpr_at_threshold": 0.02875,
+        "false_alerts_per_hour": 13.5,
+        "anomalous_clips_alerted": 0.022113022113022112,
+        "threshold": 0.3815147876739502,
+        "calibration": {
+          "method": "99.0th percentile of held-out healthy calibration windows",
+          "windows": 1456,
+          "mean": 0.11526082456111908,
+          "max": 0.5633352994918823
+        },
+        "reference_windows": 5832
+      },
+      "grid": {
+        "pooled/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.49798525798525806,
+          "pauc_0.1": 0.4914004914004914,
+          "window_tpr_at_threshold": 0.017506142506142505,
+          "window_fpr_at_threshold": 0.02875,
+          "false_alerts_per_hour": 13.5,
+          "anomalous_clips_alerted": 0.022113022113022112,
+          "threshold": 0.3815147876739502,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.11526082456111908,
+            "max": 0.5633352994918823
+          },
+          "reference_windows": 5832
+        },
+        "pooled/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.4990909090909091,
+          "pauc_0.1": 0.4904952799689642,
+          "window_tpr_at_threshold": 0.016277641277641277,
+          "window_fpr_at_threshold": 0.03,
+          "false_alerts_per_hour": 13.5,
+          "anomalous_clips_alerted": 0.022113022113022112,
+          "threshold": 0.40843310952186584,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.1288365125656128,
+            "max": 0.6025057435035706
+          },
+          "reference_windows": 5832
+        },
+        "pooled/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.5043488943488944,
+          "pauc_0.1": 0.504202767360662,
+          "window_tpr_at_threshold": 0.022113022113022112,
+          "window_fpr_at_threshold": 0.01625,
+          "false_alerts_per_hour": 9.0,
+          "anomalous_clips_alerted": 0.03194103194103194,
+          "threshold": 0.9853531718254089,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.43261268734931946,
+            "max": 1.8094111680984497
+          },
+          "reference_windows": 5832
+        },
+        "pooled/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.504078624078624,
+          "pauc_0.1": 0.5038148196042933,
+          "window_tpr_at_threshold": 0.016891891891891893,
+          "window_fpr_at_threshold": 0.015,
+          "false_alerts_per_hour": 9.0,
+          "anomalous_clips_alerted": 0.019656019656019656,
+          "threshold": 1.0542786121368408,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.45823216438293457,
+            "max": 1.8844687938690186
+          },
+          "reference_windows": 5832
+        },
+        "fc1/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.49734643734643735,
+          "pauc_0.1": 0.49812491917755075,
+          "window_tpr_at_threshold": 0.017506142506142505,
+          "window_fpr_at_threshold": 0.02875,
+          "false_alerts_per_hour": 18.0,
+          "anomalous_clips_alerted": 0.019656019656019656,
+          "threshold": 0.050920188426971436,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.00914845708757639,
+            "max": 0.1535801887512207
+          },
+          "reference_windows": 5832
+        },
+        "fc1/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.49864864864864866,
+          "pauc_0.1": 0.4952799689641795,
+          "window_tpr_at_threshold": 0.017506142506142505,
+          "window_fpr_at_threshold": 0.0325,
+          "false_alerts_per_hour": 18.0,
+          "anomalous_clips_alerted": 0.022113022113022112,
+          "threshold": 0.05762564390897751,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 0.010755209252238274,
+            "max": 0.16200658679008484
+          },
+          "reference_windows": 5832
+        },
+        "fc1/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.5017199017199017,
+          "pauc_0.1": 0.5008405534721324,
+          "window_tpr_at_threshold": 0.02119164619164619,
+          "window_fpr_at_threshold": 0.02625,
+          "false_alerts_per_hour": 13.5,
+          "anomalous_clips_alerted": 0.029484029484029485,
+          "threshold": 3.3618428707122803,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 1.2850905656814575,
+            "max": 7.615502834320068
+          },
+          "reference_windows": 5832
+        },
+        "fc1/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 407
+          },
+          "roc_auc": 0.5012776412776413,
+          "pauc_0.1": 0.4995473942842364,
+          "window_tpr_at_threshold": 0.016277641277641277,
+          "window_fpr_at_threshold": 0.025,
+          "false_alerts_per_hour": 9.0,
+          "anomalous_clips_alerted": 0.019656019656019656,
+          "threshold": 3.73534893989563,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1456,
+            "mean": 1.3974063396453857,
+            "max": 7.829119682312012
+          },
+          "reference_windows": 5832
+        }
+      }
+    },
+    "fan/id_02": {
+      "clips": {
+        "reference": 733,
+        "calibration": 183,
+        "test": 459
+      },
+      "primary": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 359
+        },
+        "roc_auc": 0.5873259052924791,
+        "pauc_0.1": 0.5296877290719836,
+        "window_tpr_at_threshold": 0.016713091922005572,
+        "window_fpr_at_threshold": 0.005,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.025069637883008356,
+        "threshold": 0.3701744079589844,
+        "calibration": {
+          "method": "99.0th percentile of held-out healthy calibration windows",
+          "windows": 1464,
+          "mean": 0.10038945823907852,
+          "max": 0.6740331053733826
+        },
+        "reference_windows": 5864
+      },
+      "grid": {
+        "pooled/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5873259052924791,
+          "pauc_0.1": 0.5296877290719836,
+          "window_tpr_at_threshold": 0.016713091922005572,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.025069637883008356,
+          "threshold": 0.3701744079589844,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.10038945823907852,
+            "max": 0.6740331053733826
+          },
+          "reference_windows": 5864
+        },
+        "pooled/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5851810584958217,
+          "pauc_0.1": 0.5296877290719836,
+          "window_tpr_at_threshold": 0.014275766016713091,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.016713091922005572,
+          "threshold": 0.40549734234809875,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.11078325659036636,
+            "max": 0.6954560279846191
+          },
+          "reference_windows": 5864
+        },
+        "pooled/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.584150417827298,
+          "pauc_0.1": 0.5301275472804574,
+          "window_tpr_at_threshold": 0.023676880222841225,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.03064066852367688,
+          "threshold": 0.9406444430351257,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.3973195254802704,
+            "max": 1.753495454788208
+          },
+          "reference_windows": 5864
+        },
+        "pooled/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5828969359331477,
+          "pauc_0.1": 0.5271954258906318,
+          "window_tpr_at_threshold": 0.026462395543175487,
+          "window_fpr_at_threshold": 0.0025,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.036211699164345405,
+          "threshold": 0.9735631346702576,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.418128103017807,
+            "max": 1.7579542398452759
+          },
+          "reference_windows": 5864
+        },
+        "fc1/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.6000278551532034,
+          "pauc_0.1": 0.5311537897668963,
+          "window_tpr_at_threshold": 0.02158774373259053,
+          "window_fpr_at_threshold": 0.00375,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.03064066852367688,
+          "threshold": 0.04868725687265396,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.007402801886200905,
+            "max": 0.1546865701675415
+          },
+          "reference_windows": 5864
+        },
+        "fc1/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5959610027855153,
+          "pauc_0.1": 0.5296877290719836,
+          "window_tpr_at_threshold": 0.02298050139275766,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.033426183844011144,
+          "threshold": 0.05376047268509865,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.008649744093418121,
+            "max": 0.16043499112129211
+          },
+          "reference_windows": 5864
+        },
+        "fc1/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5974094707520892,
+          "pauc_0.1": 0.5301275472804574,
+          "window_tpr_at_threshold": 0.02193593314763231,
+          "window_fpr_at_threshold": 0.00375,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.033426183844011144,
+          "threshold": 3.319519281387329,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 1.1562215089797974,
+            "max": 6.346160888671875
+          },
+          "reference_windows": 5864
+        },
+        "fc1/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 359
+          },
+          "roc_auc": 0.5936490250696379,
+          "pauc_0.1": 0.5285148805160533,
+          "window_tpr_at_threshold": 0.02402506963788301,
+          "window_fpr_at_threshold": 0.00625,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.027855153203342618,
+          "threshold": 3.4846088886260986,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 1.250744342803955,
+            "max": 6.442500114440918
+          },
+          "reference_windows": 5864
+        }
+      }
+    },
+    "fan/id_04": {
+      "clips": {
+        "reference": 746,
+        "calibration": 187,
+        "test": 448
+      },
+      "primary": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 348
+        },
+        "roc_auc": 0.4743103448275862,
+        "pauc_0.1": 0.5120992135511192,
+        "window_tpr_at_threshold": 0.011853448275862068,
+        "window_fpr_at_threshold": 0.0075,
+        "false_alerts_per_hour": 4.5,
+        "anomalous_clips_alerted": 0.014367816091954023,
+        "threshold": 0.36116769909858704,
+        "calibration": {
+          "method": "99.0th percentile of held-out healthy calibration windows",
+          "windows": 1496,
+          "mean": 0.11458836495876312,
+          "max": 0.606281578540802
+        },
+        "reference_windows": 5968
+      },
+      "grid": {
+        "pooled/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4743103448275862,
+          "pauc_0.1": 0.5120992135511192,
+          "window_tpr_at_threshold": 0.011853448275862068,
+          "window_fpr_at_threshold": 0.0075,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.014367816091954023,
+          "threshold": 0.36116769909858704,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.11458836495876312,
+            "max": 0.606281578540802
+          },
+          "reference_windows": 5968
+        },
+        "pooled/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4717528735632184,
+          "pauc_0.1": 0.514519056261343,
+          "window_tpr_at_threshold": 0.01221264367816092,
+          "window_fpr_at_threshold": 0.0075,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.014367816091954023,
+          "threshold": 0.3913802206516266,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.12694783508777618,
+            "max": 0.643227219581604
+          },
+          "reference_windows": 5968
+        },
+        "pooled/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.44551724137931037,
+          "pauc_0.1": 0.49485783424077434,
+          "window_tpr_at_threshold": 0.005387931034482759,
+          "window_fpr_at_threshold": 0.0025,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.005747126436781609,
+          "threshold": 1.0048186779022217,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.4416027367115021,
+            "max": 1.1464290618896484
+          },
+          "reference_windows": 5968
+        },
+        "pooled/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4461781609195402,
+          "pauc_0.1": 0.49470659407138534,
+          "window_tpr_at_threshold": 0.005747126436781609,
+          "window_fpr_at_threshold": 0.00375,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.005747126436781609,
+          "threshold": 1.042327642440796,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.465066522359848,
+            "max": 1.1995394229888916
+          },
+          "reference_windows": 5968
+        },
+        "fc1/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4639080459770115,
+          "pauc_0.1": 0.5027223230490018,
+          "window_tpr_at_threshold": 0.005387931034482759,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.008620689655172414,
+          "threshold": 0.046959441155195236,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.008604415692389011,
+            "max": 0.07598227262496948
+          },
+          "reference_windows": 5968
+        },
+        "fc1/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.45882183908045976,
+          "pauc_0.1": 0.5021173623714459,
+          "window_tpr_at_threshold": 0.006824712643678161,
+          "window_fpr_at_threshold": 0.00625,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.008620689655172414,
+          "threshold": 0.05456026270985603,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 0.010053196921944618,
+            "max": 0.07897056639194489
+          },
+          "reference_windows": 5968
+        },
+        "fc1/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4606034482758621,
+          "pauc_0.1": 0.500302480338778,
+          "window_tpr_at_threshold": 0.00646551724137931,
+          "window_fpr_at_threshold": 0.005,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.008620689655172414,
+          "threshold": 3.2917518615722656,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 1.2776567935943604,
+            "max": 4.118955135345459
+          },
+          "reference_windows": 5968
+        },
+        "fc1/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 348
+          },
+          "roc_auc": 0.4568390804597701,
+          "pauc_0.1": 0.499848759830611,
+          "window_tpr_at_threshold": 0.008979885057471264,
+          "window_fpr_at_threshold": 0.00625,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.011494252873563218,
+          "threshold": 3.4233317375183105,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1496,
+            "mean": 1.3831839561462402,
+            "max": 4.419764518737793
+          },
+          "reference_windows": 5968
+        }
+      }
+    },
+    "fan/id_06": {
+      "clips": {
+        "reference": 732,
+        "calibration": 183,
+        "test": 461
+      },
+      "primary": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 361
+        },
+        "roc_auc": 0.8153739612188365,
+        "pauc_0.1": 0.5980463624435048,
+        "window_tpr_at_threshold": 0.07617728531855955,
+        "window_fpr_at_threshold": 0.01625,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.08587257617728532,
+        "threshold": 0.3727804124355316,
+        "calibration": {
+          "method": "99.0th percentile of held-out healthy calibration windows",
+          "windows": 1464,
+          "mean": 0.14655157923698425,
+          "max": 0.5547509789466858
+        },
+        "reference_windows": 5856
+      },
+      "grid": {
+        "pooled/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.8153739612188365,
+          "pauc_0.1": 0.5980463624435048,
+          "window_tpr_at_threshold": 0.07617728531855955,
+          "window_fpr_at_threshold": 0.01625,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.08587257617728532,
+          "threshold": 0.3727804124355316,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.14655157923698425,
+            "max": 0.5547509789466858
+          },
+          "reference_windows": 5856
+        },
+        "pooled/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.8051246537396122,
+          "pauc_0.1": 0.5946931039510133,
+          "window_tpr_at_threshold": 0.07583102493074792,
+          "window_fpr_at_threshold": 0.015,
+          "false_alerts_per_hour": 0.0,
+          "anomalous_clips_alerted": 0.08587257617728532,
+          "threshold": 0.39619147777557373,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.16183488070964813,
+            "max": 0.5691395401954651
+          },
+          "reference_windows": 5856
+        },
+        "pooled/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.6903878116343489,
+          "pauc_0.1": 0.5525586820236186,
+          "window_tpr_at_threshold": 0.04813019390581717,
+          "window_fpr_at_threshold": 0.0225,
+          "false_alerts_per_hour": 9.0,
+          "anomalous_clips_alerted": 0.0664819944598338,
+          "threshold": 0.8939629197120667,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.43452227115631104,
+            "max": 1.118387222290039
+          },
+          "reference_windows": 5856
+        },
+        "pooled/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.6786980609418283,
+          "pauc_0.1": 0.5484764542936288,
+          "window_tpr_at_threshold": 0.04224376731301939,
+          "window_fpr_at_threshold": 0.02125,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.055401662049861494,
+          "threshold": 0.9415351748466492,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.457330584526062,
+            "max": 1.1404521465301514
+          },
+          "reference_windows": 5856
+        },
+        "fc1/cosine/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.7221052631578947,
+          "pauc_0.1": 0.547164309666132,
+          "window_tpr_at_threshold": 0.04155124653739612,
+          "window_fpr_at_threshold": 0.01875,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.04155124653739612,
+          "threshold": 0.04371508210897446,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.009185092523694038,
+            "max": 0.07251870632171631
+          },
+          "reference_windows": 5856
+        },
+        "fc1/cosine/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.7120221606648199,
+          "pauc_0.1": 0.5413325557661467,
+          "window_tpr_at_threshold": 0.046052631578947366,
+          "window_fpr_at_threshold": 0.02125,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.04986149584487535,
+          "threshold": 0.04782646521925926,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 0.010650288313627243,
+            "max": 0.0785374790430069
+          },
+          "reference_windows": 5856
+        },
+        "fc1/euclidean/k1": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.7332686980609417,
+          "pauc_0.1": 0.5610147251785975,
+          "window_tpr_at_threshold": 0.04051246537396122,
+          "window_fpr_at_threshold": 0.01875,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.04155124653739612,
+          "threshold": 3.1664488315582275,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 1.2956401109695435,
+            "max": 3.977613687515259
+          },
+          "reference_windows": 5856
+        },
+        "fc1/euclidean/k5": {
+          "clips": {
+            "normal": 100,
+            "anomaly": 361
+          },
+          "roc_auc": 0.7222437673130193,
+          "pauc_0.1": 0.550371774311124,
+          "window_tpr_at_threshold": 0.045013850415512466,
+          "window_fpr_at_threshold": 0.02,
+          "false_alerts_per_hour": 4.5,
+          "anomalous_clips_alerted": 0.04986149584487535,
+          "threshold": 3.2996487617492676,
+          "calibration": {
+            "method": "99.0th percentile of held-out healthy calibration windows",
+            "windows": 1464,
+            "mean": 1.3964616060256958,
+            "max": 4.137691497802734
+          },
+          "reference_windows": 5856
+        }
+      }
+    }
+  },
+  "aggregate": {
+    "fan": {
+      "roc_auc": 0.5937488673310399,
+      "pauc_0.1": 0.5328084491167748,
+      "ids": 4
+    },
+    "all": {
+      "roc_auc": 0.5937488673310399,
+      "pauc_0.1": 0.5328084491167748,
+      "ids": 4
+    }
+  },
+  "latency_ms_per_window": {
+    "mean": 12.08548150001055,
+    "p95": 16.02421259985931,
+    "reference_windows": 5832,
+    "includes": "CNN14 forward on one 3 s window + kNN search (batch 1)"
+  }
+}

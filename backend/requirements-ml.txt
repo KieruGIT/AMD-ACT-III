@@ -5,3 +5,5 @@ scikit-learn>=1.5
 # Pretrained-embedding scorer (PANNs CNN14 front end)
 torchlibrosa==0.1.0
 librosa
+# Interference flags (INTERFERENCE=flag): speech detection, MIT, weights bundled
+silero-vad

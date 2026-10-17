@@ -68,6 +68,14 @@ export function AssessmentCard({
               ? `Not assessed: ${r.note}.`
               : meta.description}
         </p>
+        {r?.interference?.recent_windows_flagged ? (
+          <p className="mt-2 max-w-sm text-xs text-on-dark-muted" data-testid="interference">
+            Possible interference in {r.interference.recent_windows_flagged} of the last{' '}
+            {r.interference.recent_windows ?? 5} windows (
+            {(r.interference.recent_flags ?? []).map((f) => (f === 'transient' ? 'impact/transient' : f)).join(', ')}).
+            Scores and alerts are unchanged; check the machine before dismissing.
+          </p>
+        ) : null}
       </div>
 
       <div className="relative mt-6 grid grid-cols-2 gap-3">

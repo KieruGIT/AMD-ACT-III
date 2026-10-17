@@ -60,6 +60,10 @@ class AlertAggregator:
     _cooldown_until: float = float("-inf")
     active: AlertEvent | None = None
 
+    def recent_window_ids(self) -> list[str]:
+        """recorded_at of the valid windows the policy is currently counting (emptied by a gap reset)."""
+        return [r.recorded_at for r in self._recent]
+
     def observe(self, *, valid: bool, is_anomaly: bool, score: float | None, threshold: float | None,
                 recorded_at: str, session_id: str, machine_id: str) -> Decision:
         current = self.active.event_id if self.active else None

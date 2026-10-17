@@ -1,0 +1,158 @@
+[
+  {
+    "version": "fan-dense-ae-20261017-054146",
+    "checkpoint": "models/fan_dense.pt",
+    "threshold": 0.7036023348569873,
+    "device": {
+      "torch": "2.11.0+cu128",
+      "hip": null,
+      "cuda": "12.8",
+      "device": "Tesla T4"
+    },
+    "per_id": {
+      "id_00": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 407
+        },
+        "roc_auc": 0.5275429975429975,
+        "pauc_0.1": 0.49269365058838743,
+        "window_tpr_at_threshold": 0.011977886977886978,
+        "window_fpr_at_threshold": 0.0125,
+        "false_alerts_per_hour": 4.5,
+        "anomalous_clips_alerted": 0.012285012285012284
+      },
+      "id_02": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 359
+        },
+        "roc_auc": 0.737158774373259,
+        "pauc_0.1": 0.5477202756194106,
+        "window_tpr_at_threshold": 0.007311977715877437,
+        "window_fpr_at_threshold": 0.00125,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.011142061281337047
+      },
+      "id_04": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 348
+        },
+        "roc_auc": 0.6043678160919541,
+        "pauc_0.1": 0.5338777979431337,
+        "window_tpr_at_threshold": 0.007543103448275862,
+        "window_fpr_at_threshold": 0.0,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.011494252873563218
+      },
+      "id_06": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 361
+        },
+        "roc_auc": 0.7242936288088642,
+        "pauc_0.1": 0.5277737279486806,
+        "window_tpr_at_threshold": 0.001038781163434903,
+        "window_fpr_at_threshold": 0.0,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.0
+      },
+      "all": {
+        "clips": {
+          "normal": 400,
+          "anomaly": 1475
+        },
+        "roc_auc": 0.6459762711864407,
+        "pauc_0.1": 0.5185548617305977,
+        "window_tpr_at_threshold": 0.00711864406779661,
+        "window_fpr_at_threshold": 0.0034375,
+        "false_alerts_per_hour": 1.125,
+        "anomalous_clips_alerted": 0.008813559322033898
+      }
+    },
+    "latency_ms_per_window": {
+      "mean": 2.9978110800766444,
+      "p95": 3.2788928501304326,
+      "includes": "log-mel features + model forward, one 3 s window"
+    }
+  },
+  {
+    "version": "fan-conv-ae-20261017-055154",
+    "checkpoint": "models/fan_conv.pt",
+    "threshold": 0.01495401822030545,
+    "device": {
+      "torch": "2.11.0+cu128",
+      "hip": null,
+      "cuda": "12.8",
+      "device": "Tesla T4"
+    },
+    "per_id": {
+      "id_00": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 407
+        },
+        "roc_auc": 0.46459459459459457,
+        "pauc_0.1": 0.4963144963144963,
+        "window_tpr_at_threshold": 0.01996314496314496,
+        "window_fpr_at_threshold": 0.0225,
+        "false_alerts_per_hour": 13.5,
+        "anomalous_clips_alerted": 0.02702702702702703
+      },
+      "id_02": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 359
+        },
+        "roc_auc": 0.588774373259053,
+        "pauc_0.1": 0.5364316082685823,
+        "window_tpr_at_threshold": 0.004178272980501393,
+        "window_fpr_at_threshold": 0.00125,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.005571030640668524
+      },
+      "id_04": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 348
+        },
+        "roc_auc": 0.4092528735632184,
+        "pauc_0.1": 0.49894131881427706,
+        "window_tpr_at_threshold": 0.0017959770114942528,
+        "window_fpr_at_threshold": 0.00125,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.0
+      },
+      "id_06": {
+        "clips": {
+          "normal": 100,
+          "anomaly": 361
+        },
+        "roc_auc": 0.5182548476454294,
+        "pauc_0.1": 0.5193176847937017,
+        "window_tpr_at_threshold": 0.010734072022160665,
+        "window_fpr_at_threshold": 0.0025,
+        "false_alerts_per_hour": 0.0,
+        "anomalous_clips_alerted": 0.008310249307479225
+      },
+      "all": {
+        "clips": {
+          "normal": 400,
+          "anomaly": 1475
+        },
+        "roc_auc": 0.5031762711864407,
+        "pauc_0.1": 0.5043532560214095,
+        "window_tpr_at_threshold": 0.009576271186440678,
+        "window_fpr_at_threshold": 0.006875,
+        "false_alerts_per_hour": 3.375,
+        "anomalous_clips_alerted": 0.010847457627118645
+      }
+    },
+    "latency_ms_per_window": {
+      "mean": 2.6950540600410022,
+      "p95": 2.8332540999599587,
+      "includes": "log-mel features + model forward, one 3 s window"
+    }
+  }
+]

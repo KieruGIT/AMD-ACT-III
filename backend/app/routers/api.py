@@ -11,11 +11,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 
 from ..audio.wav import AudioError, decode_window
-from ..db import hash_key, now_iso
+from ..auth import principal
+from ..db import now_iso
 from ..notify import deliver
 from ..profiles import CONTRACT_VERSION, MAX_UPLOAD_BYTES, PROFILES, config_payload
 
 router = APIRouter(prefix="/api/v1")
+INTERFERENCE_BUDGET_S = 0.8  # max extra wait for interference flags (windows arrive every 1 s)
 
 
 # --- auth ------------------------------------------------------------------------------------
@@ -26,21 +28,6 @@ def _device(request: Request, project_id: str | None, device_key: str | None):
     if not device:
         raise HTTPException(403, "unknown device key for this project")
     return device
-
-
-def _reader(request: Request, project_id: str | None, viewer_key: str | None, device_key: str | None):
-    """Viewers (dashboard) or the project's own devices may read events and acknowledge."""
-    db = request.app.state.db
-    if not project_id or not (viewer_key or device_key):
-        raise HTTPException(401, "X-Project-Id and X-Viewer-Key (or X-Device-Key) headers are required")
-    project = db.project(project_id)
-    if not project:
-        raise HTTPException(403, "unknown project")
-    if viewer_key and hash_key(viewer_key) == project["viewer_key_hash"]:
-        return project
-    if device_key and db.device_by_key(project_id, device_key):
-        return project
-    raise HTTPException(403, "invalid key for this project")
 
 
 # --- public ------------------------------------------------------------------------------------
@@ -100,19 +87,50 @@ async def analyze_window(
 
     score, model_ms, note = None, None, None
     threshold = getattr(scorer, "threshold", None)
+    flags_task = None
+    if app.interference is not None and window.quality == "ok":  # runs alongside scoring
+        start_s = datetime.fromisoformat(recorded_at.replace("Z", "+00:00")).timestamp()
+        flags_task = asyncio.ensure_future(
+            run_in_threadpool(app.interference.analyze, window.samples, state.interference_state, start_s))
     if window.quality == "ok":
         s = await run_in_threadpool(scorer.score, window.samples, state.scorer_state)
         score, threshold, model_ms = s.value, s.threshold, round(s.model_ms, 1)
         if s.value is None:
             note = "learning this session's baseline"
+    interference = None
+    if flags_task is not None:
+        from ..inference.interference import describe, remember, unavailable
+
+        try:  # flags are advisory: a slow or crashing detector must never delay or block the window or the alert
+            interference, next_state = await asyncio.wait_for(flags_task, INTERFERENCE_BUDGET_S)
+            state.interference_state = next_state  # commit only an accepted result; a timed-out worker's is discarded
+            note = note or describe(interference)
+        except asyncio.TimeoutError:
+            interference = unavailable("timeout")
+        except Exception as err:
+            interference = unavailable(type(err).__name__)
+        remember(state.interference_history, recorded_at, interference)
     valid = score is not None
     is_anomaly = bool(valid and score > threshold)
 
     decision = state.aggregator.observe(valid=valid, is_anomaly=is_anomaly, score=score, threshold=threshold,
                                         recorded_at=recorded_at, session_id=session_id, machine_id=machine_id)
     event = asdict(decision.changed) if decision.changed else None
+    recent = None
+    if app.interference is not None:  # interference over the same windows the alert policy is counting
+        from ..inference.interference import summarize
+
+        recent = summarize(state.interference_history, state.aggregator.recent_window_ids())
+        if interference is not None:
+            interference.update(recent)
     if event:
-        app.db.upsert_event(x_project_id, device["id"], decision.changed)
+        note_at_open = None
+        if decision.triggered and recent is not None:  # what the person reading the alert should know
+            from ..inference.interference import recent_summary
+
+            note_at_open = recent_summary(recent)
+        app.db.upsert_event(x_project_id, device["id"], decision.changed, note_at_open)
+        event = app.db.event(x_project_id, decision.changed.event_id) or event
         recovered = event["ended_at"] is not None and event["ended_at"] == recorded_at
         if decision.triggered or recovered:
             project = dict(app.db.project(x_project_id))
@@ -138,6 +156,8 @@ async def analyze_window(
         "spectrogram_overlay": None,
         "note": note,
     }
+    if app.interference is not None:  # proposed v1.1 field; absent unless INTERFERENCE=flag
+        result["interference"] = interference
     app.hub.remember(state, sequence, result)
     app.db.touch_device(device["id"])
     app.hub.publish(x_project_id, {
@@ -149,39 +169,51 @@ async def analyze_window(
 # --- events (contract §5.4 + proposed ack) ---------------------------------------------------------
 @router.get("/sessions/{session_id}/events")
 def session_events(session_id: str, request: Request, x_project_id: str | None = Header(None),
+                   authorization: str | None = Header(None), x_guest_key: str | None = Header(None),
                    x_viewer_key: str | None = Header(None), x_device_key: str | None = Header(None)):
-    project = _reader(request, x_project_id, x_viewer_key, x_device_key)
-    return request.app.state.db.events(project["id"], session_id)
+    p = principal(request, x_project_id, authorization=authorization, guest_key=x_guest_key, viewer_key=x_viewer_key,
+                  device_key=x_device_key, allow_device=True)
+    return request.app.state.db.events(p.project_id, session_id)
 
 
 @router.post("/sessions/{session_id}/events/{event_id}/ack")
 def acknowledge(session_id: str, event_id: str, request: Request, x_project_id: str | None = Header(None),
+                authorization: str | None = Header(None), x_guest_key: str | None = Header(None),
                 x_viewer_key: str | None = Header(None), x_device_key: str | None = Header(None)):
-    project = _reader(request, x_project_id, x_viewer_key, x_device_key)
-    ev = request.app.state.db.acknowledge(project["id"], event_id)
-    if not ev or ev["session_id"] != session_id:
+    p = principal(request, x_project_id, authorization=authorization, guest_key=x_guest_key, viewer_key=x_viewer_key,
+                  device_key=x_device_key, allow_device=True)
+    db = request.app.state.db
+    current = db.event(p.project_id, event_id)
+    if not current or current["session_id"] != session_id:
         raise HTTPException(404, "event not found")
-    request.app.state.hub.publish(project["id"], {"type": "event", "event": ev})
+    ev = db.acknowledge(p.project_id, event_id, p.actor)
+    if not current["acknowledged_at"]:
+        db.audit(p.project_id, p.actor, "alert.acknowledged", event_id)
+    request.app.state.hub.publish(p.project_id, {"type": "event", "event": ev})
     return ev
 
 
 # --- project views for the dashboard (proposed v1.1) ------------------------------------------------
 @router.get("/projects/{project_id}")
-def project_overview(project_id: str, request: Request, x_viewer_key: str | None = Header(None)):
-    project = _reader(request, project_id, x_viewer_key, None)
+def project_overview(project_id: str, request: Request, authorization: str | None = Header(None),
+                     x_guest_key: str | None = Header(None), x_viewer_key: str | None = Header(None)):
+    p = principal(request, project_id, authorization=authorization, guest_key=x_guest_key, viewer_key=x_viewer_key)
+    project = request.app.state.db.project(project_id)
     app = request.app.state
     devices = []
     for d in app.db.devices(project_id):
         latest = app.hub.latest_by_device.get(d["id"])
         devices.append({**dict(d), "latest": latest["result"] if latest else None})
     return {"id": project["id"], "name": project["name"], "devices": devices,
-            "events": app.db.events(project_id, limit=50)}
+            "events": app.db.events(project_id, limit=50), "role": p.role, "access": p.kind,
+            "is_guest": bool(project.get("is_guest")), "expires_at": project.get("expires_at")}
 
 
 @router.get("/projects/{project_id}/stream")
-async def project_stream(project_id: str, request: Request, x_viewer_key: str | None = Header(None)):
+async def project_stream(project_id: str, request: Request, authorization: str | None = Header(None),
+                         x_guest_key: str | None = Header(None), x_viewer_key: str | None = Header(None)):
     """Server-Sent Events: recent messages first, then live window results and event changes."""
-    _reader(request, project_id, x_viewer_key, None)
+    principal(request, project_id, authorization=authorization, guest_key=x_guest_key, viewer_key=x_viewer_key)
     hub = request.app.state.hub
     queue, backlog = hub.subscribe(project_id)
 

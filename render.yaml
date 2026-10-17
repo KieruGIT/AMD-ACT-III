@@ -1,0 +1,34 @@
+# Render Blueprint: the analysis API (backend/) as a free Docker web service.
+# Render dashboard → New → Blueprint → pick this repo. Secrets (sync: false) are entered in the dashboard, never here.
+services:
+  - type: web
+    name: machine-sound-monitor-api
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: SCORER
+        value: heuristic
+      - key: INTERFERENCE
+        value: flag
+      - key: SUPABASE_URL
+        value: https://ysgorgepbxvbxbsdgiat.supabase.co
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_CWeRxFWFcybmHCWrlxDqOA_JVTEHobx
+      - key: EMAIL_FROM
+        value: "Machine Sound Monitor <onboarding@resend.dev>"
+      # The deployed frontend origin (Vercel), comma-separated if several
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      # SECRETS: paste in the Render dashboard
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false

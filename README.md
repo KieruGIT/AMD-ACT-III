@@ -10,7 +10,7 @@ Plan and design brief: [`docs/`](docs/). Visual references: [`reference-images/`
 ```text
  Listening device (phone/Pi)        Analysis API (AMD GPU server)          Dashboards (any browser)
  project id + device key ──WAV──▶   validate → 16 kHz → score → 3-of-5  ──▶ live scores, alerts, acknowledge
-                                    └─▶ Telegram / Discord / Slack / webhook / email to registered people
+                                    └─▶ email (Resend) / Discord / Slack / webhook to registered people
 ```
 
 ## Status
@@ -43,7 +43,7 @@ Open the listener link on the device next to the machine and the dashboard link 
 
 | Command | Covers |
 | --- | --- |
-| `cd backend && pytest` | WAV validation/resampling, quality gate, dev scorer, alert policy, auth, idempotency, notify-once, Telegram/Discord delivery, no raw audio stored, train → evaluate → serve smoke test |
+| `cd backend && pytest` | WAV validation/resampling, quality gate, dev scorer, alert policy, auth, idempotency, notify-once, e-mail (Resend)/Discord delivery, no raw audio stored, train → evaluate → serve smoke test |
 | `cd frontend && npm test` | WAV encoder, ring buffer, FFT, mock alert policy and scenarios, session reducer, assessment rendering |
 | `cd frontend && npm run e2e` | Landing fits the first screen at 5 sizes, mobile overflow, reduced motion, mock console scenarios |
 | `cd frontend && npm run e2e:live` | Real backend: device streams via mic, second screen watches the same session, stop → stale |

@@ -20,6 +20,8 @@ CACHED_RESULTS_PER_SESSION = 20
 class SessionState:
     aggregator: AlertAggregator
     scorer_state: dict = field(default_factory=dict)
+    interference_state: dict = field(default_factory=dict)  # de-duplication state, replaced only on accepted results
+    interference_history: OrderedDict = field(default_factory=OrderedDict)  # recorded_at → flags
     last_sequence: int = 0
     results: OrderedDict = field(default_factory=OrderedDict)  # sequence → response (idempotent retries)
 

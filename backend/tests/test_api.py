@@ -98,5 +98,5 @@ def test_no_raw_audio_persisted(client, project, app):
     send(client, project, 1)
     tables = app.state.db._q("SELECT name FROM sqlite_master WHERE type='table'")
     for t in tables:
-        cols = [c[1] for c in app.state.db._q(f"PRAGMA table_info({t['name']})")]
+        cols = [c["name"] for c in app.state.db._q(f"PRAGMA table_info({t['name']})")]
         assert not any("audio" in c or "pcm" in c for c in cols)
