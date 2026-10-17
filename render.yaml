@@ -17,9 +17,9 @@ services:
       - key: INTERFERENCE
         value: flag
       - key: SUPABASE_URL
-        value: https://ysgorgepbxvbxbsdgiat.supabase.co
+        sync: false
       - key: SUPABASE_PUBLISHABLE_KEY
-        value: sb_publishable_CWeRxFWFcybmHCWrlxDqOA_JVTEHobx
+        sync: false
       - key: EMAIL_FROM
         value: "Machine Sound Monitor <onboarding@resend.dev>"
       # The deployed frontend origin (Vercel), comma-separated if several

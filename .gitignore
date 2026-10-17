@@ -28,3 +28,7 @@ models/
 # Deployment keys and links (contain credentials)
 deploy/.space.env
 deploy/.space-links.txt
+
+# env templates stay local (not published)
+.env.example
+.env.production
