@@ -40,6 +40,20 @@ export function useMonitoringSession() {
   const sessionRef = useRef<string | null>(null);
   const seqRef = useRef(0);
   const scenarioRef = useRef(scenario);
+  const wakeRef = useRef<WakeLockSentinel | null>(null);
+
+  // Keeps a phone used as the listening device from sleeping (which would stop the mic).
+  const keepAwake = useCallback(() => {
+    navigator.wakeLock
+      ?.request('screen')
+      .then((l) => {
+        wakeRef.current = l;
+        l.addEventListener('release', () => {
+          if (wakeRef.current === l) wakeRef.current = null;
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   const loadBackend = useCallback(async () => {
     setBackend((b) => ({ ...b, loading: true, error: null }));
@@ -67,6 +81,8 @@ export function useMonitoringSession() {
   }, []);
 
   const teardown = useCallback(() => {
+    void wakeRef.current?.release().catch(() => {});
+    wakeRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     inflightRef.current?.abort();
@@ -157,8 +173,9 @@ export function useMonitoringSession() {
       sessionRef.current = sessionId;
       dispatch({ type: 'started', sessionId, source: { kind: src.kind, label: src.label, sampleRate: src.sampleRate } });
       timerRef.current = setInterval(() => void sendWindow(cfg, machineId), cfg.input.hop_ms);
+      keepAwake();
     },
-    [backend.config, sendWindow, teardown],
+    [backend.config, keepAwake, sendWindow, teardown],
   );
 
   // A hidden tab is throttled by the browser, so live status cannot be trusted until it is visible again.
@@ -166,11 +183,13 @@ export function useMonitoringSession() {
     const onVis = () => {
       if (document.hidden && sourceRef.current) {
         dispatch({ type: 'interrupted', kind: 'hidden', message: 'The tab was hidden; browsers throttle background tabs.' });
+      } else if (!document.hidden && sourceRef.current && !wakeRef.current) {
+        keepAwake(); // browsers drop wake locks when the tab is hidden
       }
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, []);
+  }, [keepAwake]);
 
   useEffect(() => teardown, [teardown]);
 

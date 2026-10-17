@@ -1,58 +1,69 @@
 # AI Machine Sound Monitoring System
 
-AMD Developer Hackathon: ACT III, Track 1 (Intelligent Industry). An experimental web console that listens to a
-supported machine, scores each audio window with an anomaly model, and raises a review alert when unusual sound
-persists. Not a certified safety or diagnostic system.
+AMD Developer Hackathon: ACT III, Track 1 (Intelligent Industry). A listening device next to a machine streams short
+audio windows to an analysis API; the API scores them against the machine's learned normal sound, raises one alert
+when unusual sound persists, notifies the registered people, and every dashboard sees it live. Experimental, not a
+certified safety or diagnostic system.
 
 Plan and design brief: [`docs/`](docs/). Visual references: [`reference-images/`](reference-images/).
 
-## Status
-
-**M1 (frontend, mock mode): done.** The dashboard runs against a deterministic in-browser mock backend that
-implements the `/api/v1` contract. No trained model or GPU is involved yet, and the UI labels everything
-**Simulation**.
-
-## Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev      # http://localhost:5173
-npm test         # vitest
-npm run build
+```text
+ Listening device (phone/Pi)        Analysis API (AMD GPU server)          Dashboards (any browser)
+ project id + device key ──WAV──▶   validate → 16 kHz → score → 3-of-5  ──▶ live scores, alerts, acknowledge
+                                    └─▶ Telegram / Discord / Slack / webhook / email to registered people
 ```
 
-Env (`frontend/.env.example`):
+## Status
 
-| Var | Default | |
-| --- | --- | --- |
-| `VITE_MOCK_API` | `true` | `false` switches to the real FastAPI service |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Backend origin; routes are under `/api/v1` |
-
-### Demo without a microphone
-
-Choose **Demo audio**, press **Start monitoring**, then switch the **Simulation scenario** while it runs:
-
-| Scenario | What you should see |
+| Part | State |
 | --- | --- |
-| Normal operation | Low scores, `Normal`, no alerts |
-| Transient spike | One window above threshold, **no** alert |
-| Sustained anomaly | Scores stay high → exactly **one** alert (toast + history) until recovery |
-| Silence / poor signal | `Unable to assess`, no score claimed |
-| Slow backend | Responses slower than the hop; windows are skipped, not queued |
-| Backend offline | `Monitoring interrupted`; never a stale `Normal` |
-| Microphone denied | Permission error with recovery steps and a demo-audio fallback |
+| Frontend: landing page `/`, console `/app` | Done. Mock mode, device mode and watcher mode |
+| Backend: [`backend/`](backend/) FastAPI | Done: contract, device keys, alert policy, notifications, live stream |
+| Scoring | **Dev scorer** by default (labelled as such); `SCORER=autoencoder` serves a trained checkpoint |
+| ML pipeline: [`ml/`](ml/) | Done: train dense baseline + conv AE, threshold calibration, DCASE metrics, alert simulation |
+| AMD training / evaluation | **Pending real run** on the AMD GPU: follow [`docs/AMD_AI_GUIDE.md`](docs/AMD_AI_GUIDE.md) |
 
-`Microphone` uses the real mic (native sample rate, echo cancellation/noise suppression/AGC off) with the mock scorer.
+## Run it
+
+```bash
+# Frontend only, fully simulated (no backend needed)
+cd frontend && npm install && npm run dev            # http://localhost:5173
+
+# Real flow: backend + frontend in live mode
+cd backend && pip install -r requirements.txt && uvicorn app.main:app --port 8000 --env-file .env
+python -m app.admin create-project plant-a "Plant A"         # → dashboard link
+python -m app.admin add-device plant-a "Phone at fan"        # → listener link
+cd frontend && VITE_MOCK_API=false VITE_API_BASE_URL=http://localhost:8000 npm run dev
+```
+
+Open the listener link on the device next to the machine and the dashboard link on any other screen. See
+[`backend/README.md`](backend/README.md) for alert subscribers, scorers and the API reference.
+
+## Tests
+
+| Command | Covers |
+| --- | --- |
+| `cd backend && pytest` | WAV validation/resampling, quality gate, dev scorer, alert policy, auth, idempotency, notify-once, Telegram/Discord delivery, no raw audio stored, train → evaluate → serve smoke test |
+| `cd frontend && npm test` | WAV encoder, ring buffer, FFT, mock alert policy and scenarios, session reducer, assessment rendering |
+| `cd frontend && npm run e2e` | Landing fits the first screen at 5 sizes, mobile overflow, reduced motion, mock console scenarios |
+| `cd frontend && npm run e2e:live` | Real backend: device streams via mic, second screen watches the same session, stop → stale |
+
+## Demo without a backend
+
+In `/app` with mock mode, choose **Demo audio**, press **Start monitoring**, then switch the **Simulation scenario**:
+normal, transient spike (no alert), sustained anomaly (exactly one alert), silence (`Unable to assess`), slow backend
+(windows skipped), backend offline (`Monitoring interrupted`), microphone denied.
+
+## Hosting
+
+Two deployments: the frontend on **Vercel** (root `frontend`, `vercel.json` included) and the API on the **AMD GPU
+machine** behind HTTPS (e.g. `cloudflared tunnel --url http://localhost:8000`). Build the frontend with
+`VITE_MOCK_API=false` and `VITE_API_BASE_URL=<api https url>`; set the API's `CORS_ORIGINS` and `PUBLIC_APP_URL` to
+the frontend URL.
 
 ## Open integration questions (for the AI developer)
 
-1. **Sample rate:** the frontend sends WAV at the browser's native rate (usually 44.1/48 kHz) and expects the
-   backend to resample to 16 kHz. `/config` should say whether non-16 kHz input is accepted.
-2. **Proposed v1.1 additions** (mocked, not yet agreed):
-   - `GET /sessions/{id}/events` response shape (`AlertEvent` in `frontend/src/types/monitoring.ts`).
-   - `POST /sessions/{id}/events/{event_id}/ack`: acknowledgment only, not resolution.
-   - One event per uninterrupted anomaly, closed after N consecutive normal windows, then cooldown; long gaps
-     reset the 3-of-5 count.
-3. The real model version, profile IDs, window/hop, score range and threshold; the UI reads these from `/config`.
-4. M3 consistency test: inject the same digital audio into both paths (speaker→mic playback changes the signal).
+1. Model checkpoint format, log-mel parameters, threshold and version for `autoencoder.py`.
+2. Confirm window 3 s / hop 1 s / 16 kHz with the trained model (frontend reads them from `/config`).
+3. Proposed v1.1 additions now implemented: events schema, acknowledge route, project/device keys, stream, `note`.
+4. M3 consistency test: feed the same digital audio through upload and live paths.

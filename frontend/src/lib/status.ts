@@ -89,3 +89,17 @@ export const QUALITY_LABEL: Record<string, string> = {
   unknown: 'Unknown',
 };
 
+
+/** What the backend says is producing scores. Never claims "Live model" for the mock or dev scorer. */
+export function modeLabel(mode: string | undefined): { text: string; className: string } {
+  switch (mode) {
+    case 'mock':
+      return { text: 'Simulation (mock backend)', className: 'text-teal' };
+    case 'heuristic':
+      return { text: 'Dev scorer (no trained model)', className: 'text-warning' };
+    case 'model':
+      return { text: 'Live model', className: 'text-normal' };
+    default:
+      return { text: 'Service unreachable', className: 'text-warning' };
+  }
+}

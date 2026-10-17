@@ -38,6 +38,8 @@ export interface WindowResult {
     frequency_bins: number;
     values: number[];
   };
+  /** Proposed v1.1: why a window was not assessed (e.g. "learning this session's baseline"). */
+  note?: string | null;
 }
 
 export interface HealthResponse {
@@ -99,6 +101,27 @@ export interface AnalyzeWindowInput {
   sequence: number;
   recorded_at: string;
 }
+
+// --- Proposed v1.1: projects, devices and live watching (backend/app/routers/api.py) ---
+export interface DeviceSummary {
+  id: string;
+  name: string;
+  machine_id: string;
+  last_seen_at: string | null;
+  latest: WindowResult | null;
+}
+
+export interface ProjectOverview {
+  id: string;
+  name: string;
+  devices: DeviceSummary[];
+  events: (AlertEvent & { device_id: string })[];
+}
+
+export type StreamMessage = { replay?: boolean } & (
+  | { type: 'window'; device_id: string; device_name: string; result: WindowResult; event: AlertEvent | null }
+  | { type: 'event'; event: AlertEvent & { device_id: string } }
+);
 
 export interface MonitoringClient {
   readonly mode: 'mock' | 'live';

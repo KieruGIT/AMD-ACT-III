@@ -20,7 +20,7 @@ export interface SeriesPoint {
 export interface SessionState {
   status: MonitoringStatus;
   sessionId: string | null;
-  source: { kind: SourceKind; label: string; sampleRate: number } | null;
+  source: { kind: SourceKind | 'remote'; label: string; sampleRate: number } | null;
   error: { kind: SessionErrorKind; message: string } | null;
   latest: WindowResult | null;
   lastResultAt: number | null; // client clock (ms) when `latest` arrived
@@ -38,7 +38,7 @@ export type SessionAction =
   | { type: 'start_failed'; kind: SessionErrorKind; message: string }
   | { type: 'window_sent' }
   | { type: 'window_skipped' }
-  | { type: 'result'; result: WindowResult; receivedAt: number; roundTripMs: number }
+  | { type: 'result'; result: WindowResult; receivedAt: number; roundTripMs: number | null }
   | { type: 'request_failed'; message: string }
   | { type: 'interrupted'; kind: SessionErrorKind; message: string }
   | { type: 'stopped' };

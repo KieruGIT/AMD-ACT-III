@@ -53,9 +53,11 @@ export function SignalChain({
   const r = state.latest;
   const live = view !== 'stale' && view !== 'interrupted' && view !== 'stopped' && view !== 'idle';
 
-  const input = capturing
-    ? { tone: 'accent' as Tone, value: state.source!.kind === 'simulated' ? 'Simulated audio' : 'Microphone connected', detail: `${formatHz(state.source!.sampleRate)} · mono` }
-    : { tone: 'neutral' as Tone, value: 'No input', detail: state.status === 'stopped' ? 'Capture stopped' : 'Not capturing' };
+  const input = state.source?.kind === 'remote'
+    ? { tone: (live ? 'accent' : 'warning') as Tone, value: live ? 'Device streaming' : 'Device not sending', detail: state.source.label }
+    : capturing
+      ? { tone: 'accent' as Tone, value: state.source!.kind === 'simulated' ? 'Simulated audio' : 'Microphone connected', detail: `${formatHz(state.source!.sampleRate)} · mono` }
+      : { tone: 'neutral' as Tone, value: 'No input', detail: state.status === 'stopped' ? 'Capture stopped' : 'Not capturing' };
 
   const processed = state.status === 'interrupted' && state.error?.kind === 'backend'
     ? { tone: 'warning' as Tone, value: 'Service unreachable', detail: `${state.failures} failed request${state.failures === 1 ? '' : 's'}` }
@@ -66,7 +68,7 @@ export function SignalChain({
   const score = !r || !live
     ? { tone: 'neutral' as Tone, value: live ? 'Pending' : 'No current score', detail: r ? 'Last result is not live' : '—' }
     : r.status === 'unable_to_assess'
-      ? { tone: 'unknown' as Tone, value: 'Not assessable', detail: `Signal: ${r.signal_quality}` }
+      ? { tone: 'unknown' as Tone, value: 'Not assessable', detail: r.note ?? `Signal: ${r.signal_quality}` }
       : r.is_anomaly_window
         ? { tone: 'anomaly' as Tone, value: 'Above threshold', detail: 'Single window, not an alert' }
         : { tone: 'normal' as Tone, value: 'Below threshold', detail: 'Latest valid window' };

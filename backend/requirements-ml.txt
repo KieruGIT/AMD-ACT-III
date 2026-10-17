@@ -1,0 +1,7 @@
+# Training/evaluation and the trained-model scorer. On the AMD machine install the ROCm build of PyTorch
+# (see docs/AMD_AI_GUIDE.md), e.g. inside the rocm/pytorch Docker image, instead of the default CPU/CUDA wheel.
+torch
+scikit-learn>=1.5
+# Pretrained-embedding scorer (PANNs CNN14 front end)
+torchlibrosa==0.1.0
+librosa

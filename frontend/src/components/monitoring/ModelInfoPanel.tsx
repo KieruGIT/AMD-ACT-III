@@ -28,6 +28,12 @@ export function ModelInfoPanel({ backend, state, mode }: { backend: BackendInfo;
   const r = state.latest;
   return (
     <div>
+      {health?.mode === 'heuristic' && (
+        <p className="mb-5 rounded-[var(--radius-inner)] border border-dashed border-warning/50 bg-warning-soft p-3 text-sm text-warning">
+          Dev scorer: the backend compares each window with the first seconds of this session. It is not a trained model,
+          and its scores say nothing about detection accuracy.
+        </p>
+      )}
       {mode === 'mock' && (
         <p className="mb-5 rounded-[var(--radius-inner)] border border-dashed border-teal/60 bg-teal-soft p-3 text-sm text-teal">
           Simulation: every score, latency and model value below comes from the in-browser mock backend, not a trained model or GPU.
@@ -45,7 +51,7 @@ export function ModelInfoPanel({ backend, state, mode }: { backend: BackendInfo;
       <Section title="Input contract">
         <Row label="Contract version" value={config?.contract_version ?? '—'} />
         <Row label="Model sample rate" value={config ? formatHz(config.input.sample_rate_hz) : '—'} />
-        <Row label="Capture sample rate" value={state.source ? formatHz(state.source.sampleRate) : '—'} note="Sent at the native rate; the backend resamples (proposed integration rule)." />
+        <Row label="Capture sample rate" value={state.source?.sampleRate ? formatHz(state.source.sampleRate) : '—'} note="Sent at the native rate; the backend resamples (proposed integration rule)." />
         <Row label="Window / hop" value={config ? `${config.input.window_ms / 1000} s / ${config.input.hop_ms / 1000} s` : '—'} />
         <Row label="Format" value={config?.input.format ?? '—'} />
         <Row label="Profiles" value={config?.supported_profiles.map((p) => p.id).join(', ') || '—'} />

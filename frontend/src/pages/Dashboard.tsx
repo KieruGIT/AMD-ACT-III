@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { client } from '../api';
+import { client, role } from '../api';
 import type { SourceKind } from '../audio/sources';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertToast } from '../components/alerts/AlertToast';
@@ -13,13 +13,16 @@ import { ModelInfoPanel } from '../components/monitoring/ModelInfoPanel';
 import { SettingsPanel } from '../components/monitoring/SettingsPanel';
 import { SignalChain } from '../components/monitoring/SignalChain';
 import { StatusBanner } from '../components/monitoring/StatusBanner';
+import { WatchBar } from '../components/monitoring/WatchBar';
 import { Drawer } from '../components/ui/Drawer';
 import { Button, Panel, StatusChip } from '../components/ui/primitives';
 import { useMonitoringSession } from '../hooks/useMonitoringSession';
 import { useNow } from '../hooks/useNow';
+import { useProjectWatch } from '../hooks/useProjectWatch';
 import { playAlertTone } from '../lib/alertSound';
 import { timeZoneLabel } from '../lib/format';
 import { assessmentView } from '../lib/sessionReducer';
+import { modeLabel } from '../lib/status';
 
 const DRAWER_TITLE: Record<DrawerId, string> = {
   alerts: 'Alert history',
@@ -29,12 +32,18 @@ const DRAWER_TITLE: Record<DrawerId, string> = {
 
 export function Dashboard() {
   const session = useMonitoringSession();
-  const { state, backend, events } = session;
+  // A viewer link watches a remote listening device instead of capturing locally.
+  const watching = role === 'viewer';
+  const watch = useProjectWatch(watching);
+  const vm = watching ? watch : session;
+  const { state, events } = vm;
+  const { backend } = session;
+  const mode = modeLabel(backend.health?.mode);
   const now = useNow(500);
   const [drawer, setDrawer] = useState<DrawerId | null>(null);
   const [source, setSource] = useState<SourceKind>(client.mode === 'mock' ? 'simulated' : 'microphone');
   const [machineId, setMachineId] = useState('');
-  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [micId, setMicId] = useState<string | null>(null);
   const [sound, setSound] = useState(false);
 
   const profiles = backend.config?.supported_profiles ?? [];
@@ -48,14 +57,14 @@ export function Dashboard() {
 
   const start = useCallback(
     (kind: SourceKind = source) => {
-      if (profile) void session.start(kind, profile.id, deviceId);
+      if (profile) void session.start(kind, profile.id, micId);
     },
-    [deviceId, profile, session, source],
+    [micId, profile, session, source],
   );
 
   useEffect(() => {
-    if (session.newAlert && sound) playAlertTone();
-  }, [session.newAlert, sound]);
+    if (vm.newAlert && sound) playAlertTone();
+  }, [vm.newAlert, sound]);
 
   return (
     <div className="min-h-dvh">
@@ -66,9 +75,7 @@ export function Dashboard() {
           <div>
             <p className="eyebrow text-ink-faint">
               Live monitoring ·{' '}
-              <span className={client.mode === 'mock' ? 'text-teal' : 'text-normal'}>
-                {client.mode === 'mock' ? 'Simulation (mock backend)' : 'Live model'}
-              </span>
+              <span className={mode.className}>{mode.text}</span>
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
               {profile ? profile.label : 'Machine monitor'}
@@ -82,6 +89,17 @@ export function Dashboard() {
         </div>
 
         <Panel className="!p-4 sm:!p-5">
+          {watching ? (
+            <WatchBar overview={watch.overview} error={watch.overviewError} deviceId={watch.deviceId} onSelect={watch.selectDevice} now={now} />
+          ) : role === 'unconfigured' ? (
+            <div className="grid gap-1 text-sm">
+              <p className="font-semibold">This console isn't linked to a project yet.</p>
+              <p className="text-ink-muted">
+                Open it with a device link (to listen) or a dashboard link (to watch). Both are printed by{' '}
+                <code className="rounded bg-surface-muted px-1.5 py-0.5 text-xs">python -m app.admin</code> on the backend.
+              </p>
+            </div>
+          ) : (
           <ControlBar
             profiles={profiles}
             machineId={profile?.id ?? ''}
@@ -95,6 +113,7 @@ export function Dashboard() {
             scenario={session.scenario}
             onScenario={session.setScenario}
           />
+          )}
         </Panel>
 
         <StatusBanner
@@ -129,11 +148,18 @@ export function Dashboard() {
               ) : null
             }
           >
+            {watching ? (
+              <p className="rounded-[var(--radius-inner)] border border-dashed border-line-strong p-6 text-sm text-ink-muted">
+                Audio is captured and analysed from the listening device. Only scores and alerts are sent to this screen, so
+                there is no waveform here.
+              </p>
+            ) : (
             <div className="grid gap-6">
               <WaveformChart bufferRef={session.bufferRef} sampleRate={state.source?.sampleRate ?? null} running={capturing} />
               <SpectrogramChart bufferRef={session.bufferRef} sampleRate={state.source?.sampleRate ?? null} running={capturing} />
             </div>
-            {!state.source && (
+            )}
+            {!state.source && !watching && (
               <p className="mt-4 text-xs text-ink-faint">Waveform starts as soon as capture begins, before the first AI score.</p>
             )}
             {state.status === 'stopped' && (
@@ -158,7 +184,7 @@ export function Dashboard() {
             labelledBy="alerts-title"
             actions={events.length > 2 ? <Button variant="ghost" className="min-h-9 px-3 text-xs" onClick={() => setDrawer('alerts')}>View all</Button> : undefined}
           >
-            <AlertList events={events} profiles={profiles} now={now} onAcknowledge={session.acknowledge} limit={2} compact />
+            <AlertList events={events} profiles={profiles} now={now} onAcknowledge={vm.acknowledge} limit={2} compact />
           </Panel>
         </div>
 
@@ -169,22 +195,22 @@ export function Dashboard() {
       </main>
 
       <AlertToast
-        event={session.newAlert}
+        event={vm.newAlert}
         machineLabel={profile?.label ?? ''}
         onView={() => {
-          session.dismissNewAlert();
+          vm.dismissNewAlert();
           setDrawer('alerts');
         }}
-        onDismiss={session.dismissNewAlert}
+        onDismiss={vm.dismissNewAlert}
       />
 
       <Drawer open={drawer !== null} title={drawer ? DRAWER_TITLE[drawer] : ''} onClose={() => setDrawer(null)}>
         {drawer === 'alerts' && (
-          <AlertList events={events} profiles={profiles} now={now} onAcknowledge={session.acknowledge} />
+          <AlertList events={events} profiles={profiles} now={now} onAcknowledge={vm.acknowledge} />
         )}
         {drawer === 'model' && <ModelInfoPanel backend={backend} state={state} mode={client.mode} />}
         {drawer === 'settings' && (
-          <SettingsPanel deviceId={deviceId} onDevice={setDeviceId} sound={sound} onSound={setSound} locked={running} />
+          <SettingsPanel deviceId={micId} onDevice={setMicId} sound={sound} onSound={setSound} locked={running} />
         )}
       </Drawer>
     </div>

@@ -64,7 +64,9 @@ export function AssessmentCard({
         <p className="mt-3 max-w-sm text-sm leading-relaxed text-on-dark-muted">
           {activeEvent && view === 'normal'
             ? 'This window is below the threshold, but the open alert stays active until several consecutive normal windows confirm recovery.'
-            : meta.description}
+            : view === 'unable_to_assess' && r?.note
+              ? `Not assessed: ${r.note}.`
+              : meta.description}
         </p>
       </div>
 

@@ -20,3 +20,7 @@ datasets/
 *.ckpt
 *.onnx
 *.wav
+
+# Result archives from ml/run_amd.sh
+amd-results-*.tgz
+models/
