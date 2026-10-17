@@ -59,10 +59,14 @@ test('landing CTA opens sign-in', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Continue as guest' })).toBeVisible();
 });
 
-test('header links to sign-in and the console', async ({ page }) => {
+test('header shows Sign in for a new visitor and Open console once this browser has a workspace', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('banner').getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/signin');
-  await page.getByRole('banner').getByRole('link', { name: 'Open console' }).click();
-  await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole('button', { name: 'Start monitoring' })).toBeVisible();
+  const header = page.getByRole('banner');
+  await expect(header.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/signin');
+  await expect(header.getByRole('link', { name: 'Open console' })).toHaveCount(0);
+
+  await page.evaluate(() => localStorage.setItem('msm:credentials', JSON.stringify({ projectId: 'demo', member: true })));
+  await page.reload();
+  await expect(header.getByRole('link', { name: 'Open console' })).toHaveAttribute('href', '/app');
+  await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0);
 });

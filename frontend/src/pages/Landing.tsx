@@ -18,6 +18,7 @@ import sensorImg from '../assets/landing/sensor-motor.webp';
 import { Logo, LogoMark } from '../components/brand/Logo';
 import { HeroVisual } from '../components/landing/HeroVisual';
 import { useReveal } from '../hooks/useReveal';
+import { credentials } from '../lib/credentials';
 
 const REPO = 'https://github.com/KieruGIT/AMD-ACT-III';
 const HEADLINE = 'Hear when a machine stops sounding like itself.';
@@ -131,15 +132,14 @@ export function Landing() {
               </a>
             ))}
           </nav>
-          <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0">
-            <a href="/signin" className="inline-flex min-h-10 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap text-ink transition-colors hover:bg-surface-muted">
-              Sign in
-            </a>
-            <a href="/app" className="arrow-nudge inline-flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-navy-raised">
-              Open console
-              <ArrowRight aria-hidden className="size-4" />
-            </a>
-          </div>
+          {/* Returning visitors (signed in, guest or paired device) go straight back to their console. */}
+          <a
+            href={credentials ? '/app' : '/signin'}
+            className="arrow-nudge ml-auto inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-ink px-4 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-navy-raised lg:ml-0"
+          >
+            {credentials ? 'Open console' : 'Sign in'}
+            <ArrowRight aria-hidden className="size-4" />
+          </a>
         </div>
       </header>
 
