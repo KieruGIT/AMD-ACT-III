@@ -13,7 +13,6 @@ import {
   type PairedDevice,
   type PairingCode,
   type ProjectOverview,
-  type Recipient,
   type Role,
   type StreamMessage,
   type WindowResult,
@@ -41,9 +40,8 @@ export interface AccountApi {
   removeMember(userId: string): Promise<unknown>;
   pairingCode(deviceName: string, machineId: string): Promise<PairingCode>;
   revokeDevice(deviceId: string): Promise<unknown>;
-  recipients(): Promise<Recipient[]>;
-  addRecipient(name: string, email: string): Promise<unknown>;
-  removeRecipient(id: number): Promise<unknown>;
+  /** My own alert e-mails for this workspace (every member gets them unless they turn them off). */
+  setEmailAlerts(on: boolean): Promise<{ email_alerts: boolean }>;
   audit(): Promise<AuditEntry[]>;
 }
 
@@ -104,9 +102,7 @@ export function createHttpClient(
     pairingCode: (deviceName, machineId) =>
       json(`/projects/${pid()}/pairing-codes`, body('POST', { device_name: deviceName, machine_id: machineId })),
     revokeDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/revoke`, body('POST')),
-    recipients: () => json(`/projects/${pid()}/subscribers`),
-    addRecipient: (name, email) => json(`/projects/${pid()}/subscribers`, body('POST', { name, email })),
-    removeRecipient: (id) => json(`/projects/${pid()}/subscribers/${id}`, body('DELETE')),
+    setEmailAlerts: (on) => json(`/projects/${pid()}/me`, body('PATCH', { email_alerts: on })),
     audit: () => json(`/projects/${pid()}/audit`),
   };
 

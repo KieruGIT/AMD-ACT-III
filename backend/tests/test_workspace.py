@@ -1,4 +1,4 @@
-"""Accounts: guest mode, workspaces, invitations and roles, device pairing, e-mail recipients, audit."""
+"""Accounts: guest mode, workspaces, invitations and roles, device pairing, member alert e-mails, audit."""
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -68,7 +68,7 @@ def test_invitation_becomes_membership_on_sign_in_with_least_privilege(c):
     assert c.get(f"/api/v1/projects/{pid}/members", headers=as_("t-alice")).json()["invitations"][0]["email"] == "bob@example.com"
 
     ws = c.get("/api/v1/me", headers=as_("t-bob")).json()["workspaces"]
-    assert ws == [{"id": pid, "name": "Plant A", "role": "viewer"}]
+    assert [(w["id"], w["name"], w["role"]) for w in ws] == [(pid, "Plant A", "viewer")]
     assert c.get(f"/api/v1/projects/{pid}", headers=as_("t-bob")).status_code == 200  # viewers watch
     # ...but cannot manage
     assert c.post(f"/api/v1/projects/{pid}/pairing-codes", json={"device_name": "x"}, headers=as_("t-bob")).status_code == 403
@@ -129,12 +129,35 @@ def test_guest_workspace_is_temporary_and_cannot_invite(c):
     assert db._q("SELECT id FROM projects WHERE id = ?", (g["project_id"],)) == []
 
 
-def test_alert_recipients_are_email_only(c):
+def test_alert_emails_go_to_members_who_have_not_muted_them(c):
     pid = workspace_of(c)
-    url = f"/api/v1/projects/{pid}/subscribers"
-    assert c.post(url, json={"name": "Ops", "email": "not-an-email"}, headers=as_("t-alice")).status_code == 422
-    assert c.post(url, json={"name": "Ops", "email": "Ops@Example.com"}, headers=as_("t-alice")).status_code == 200
-    subs = c.get(url, headers=as_("t-alice")).json()
-    assert subs == [{"id": subs[0]["id"], "name": "Ops", "email": "ops@example.com"}]
-    assert c.delete(f"{url}/{subs[0]['id']}", headers=as_("t-alice")).status_code == 200
-    assert c.get(url, headers=as_("t-alice")).json() == []
+    c.post(f"/api/v1/projects/{pid}/invitations", json={"email": "bob@example.com", "role": "viewer"}, headers=as_("t-alice"))
+    db = c.app.state.db
+    assert [r["target"] for r in db.alert_recipients(pid)] == ["alice@example.com"]  # invited, not yet joined
+    c.get("/api/v1/me", headers=as_("t-bob"))  # bob signs in and joins
+    assert [r["target"] for r in db.alert_recipients(pid)] == ["alice@example.com", "bob@example.com"]
+
+    # each member mutes only themselves
+    r = c.patch(f"/api/v1/projects/{pid}/me", json={"email_alerts": False}, headers=as_("t-bob"))
+    assert r.status_code == 200 and r.json() == {"email_alerts": False}
+    assert [r["target"] for r in db.alert_recipients(pid)] == ["alice@example.com"]
+    members = {m["email"]: m["email_alerts"] for m in c.get(f"/api/v1/projects/{pid}/members", headers=as_("t-alice")).json()["members"]}
+    assert members == {"alice@example.com": True, "bob@example.com": False}
+    assert c.get("/api/v1/me", headers=as_("t-bob")).json()["workspaces"][0]["email_alerts"] is False
+
+    # guests have no e-mail address to mute; strangers cannot touch it
+    g = c.post("/api/v1/guest").json()
+    assert c.patch(f"/api/v1/projects/{g['project_id']}/me", json={"email_alerts": False},
+                   headers={"X-Guest-Key": g["guest_key"]}).status_code in (401, 403)
+    assert c.patch(f"/api/v1/projects/{pid}/me", json={"email_alerts": True}, headers=as_("t-carol")).status_code == 403
+    assert c.get(f"/api/v1/projects/{pid}/subscribers", headers=as_("t-alice")).status_code == 404  # no manual list any more
+
+
+def test_sidebar_summary_counts_devices_listening_and_open_alerts(c):
+    pid = workspace_of(c)
+    code = c.post(f"/api/v1/projects/{pid}/pairing-codes", json={"device_name": "Phone"}, headers=as_("t-alice")).json()
+    paired = c.post("/api/v1/pair", json={"code": code["code"]}).json()
+    w = c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]
+    assert (w["devices"], w["listening"], w["open_alerts"], w["members"]) == (1, 0, 0, 1)
+    c.app.state.db.touch_device(paired["device_id"])
+    assert c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]["listening"] == 1

@@ -153,6 +153,12 @@ export interface Workspace {
   id: string;
   name: string;
   role: Role;
+  // live summary for the sidebar (from GET /me)
+  email_alerts?: boolean;
+  devices?: number;
+  listening?: number;
+  open_alerts?: number;
+  members?: number;
 }
 
 export interface Me {
@@ -165,6 +171,7 @@ export interface Member {
   email: string;
   role: Role;
   created_at: string;
+  email_alerts?: boolean;
 }
 
 export interface Invitation {
@@ -189,12 +196,6 @@ export interface PairedDevice {
   device_name: string;
   machine_id: string;
   is_guest: boolean;
-}
-
-export interface Recipient {
-  id: number;
-  name: string;
-  email: string;
 }
 
 export interface AuditEntry {

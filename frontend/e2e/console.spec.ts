@@ -15,9 +15,8 @@ test('demo scenarios drive the console end to end (mock backend)', async ({ page
   await scenario(page, 'anomaly');
   await expect(page.getByRole('alert').filter({ hasText: 'Persistent acoustic anomaly' })).toBeVisible({ timeout: 10000 });
   await page.waitForTimeout(4000);
-  await page.getByRole('button', { name: /Alert history/ }).click();
-  await expect(page.getByRole('dialog').getByText('Persistent acoustic anomaly')).toHaveCount(1); // one event, not one per window
-  await page.keyboard.press('Escape');
+  // one event in the alerts card, not one per window
+  await expect(page.getByRole('region', { name: 'Alerts' }).getByText('Persistent acoustic anomaly')).toHaveCount(1);
 
   await scenario(page, 'backend_offline');
   await expect(assessment(page)).toHaveText(/Monitoring interrupted/, { timeout: 4000 });

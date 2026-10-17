@@ -1,8 +1,9 @@
-"""Accounts and administration: guest mode, my workspaces, members/invitations, device pairing, e-mail alert
-recipients, audit.
+"""Accounts and administration: guest mode, my workspaces, members/invitations, device pairing, my alert e-mails,
+audit.
 
-Roles: owner (everything, incl. owners), admin (devices, members except owners, alert recipients), viewer (watch and
-acknowledge). Every change is written to the workspace audit log.
+Alert e-mails go to every member of a workspace (at the address they sign in with) unless they mute them for
+themselves; there is no separate recipients list. Roles: owner (everything, incl. owners), admin (devices, members
+except owners), viewer (watch and acknowledge). Every change is written to the workspace audit log.
 """
 from __future__ import annotations
 
@@ -191,40 +192,21 @@ def revoke(project_id: str, device_id: str, request: Request, authorization: str
     return {"ok": True}
 
 
-# --- alert recipients (e-mail) -----------------------------------------------------------------------------
-class Recipient(BaseModel):
-    name: str = Field(min_length=1, max_length=60)
-    email: str = Field(min_length=3, max_length=254)
+# --- my alert e-mails ----------------------------------------------------------------------------------------
+class AlertPrefs(BaseModel):
+    email_alerts: bool
 
 
-@router.get("/projects/{project_id}/subscribers")
-def list_subscribers(project_id: str, request: Request, authorization: str | None = Header(None),
-                     x_guest_key: str | None = Header(None)):
-    _caller(request, project_id, "admin", authorization, x_guest_key)
-    return [{"id": s["id"], "name": s["name"], "email": s["target"]}
-            for s in request.app.state.db.subscribers(project_id) if s["channel"] == "email"]
-
-
-@router.post("/projects/{project_id}/subscribers")
-def add_subscriber(project_id: str, body: Recipient, request: Request, authorization: str | None = Header(None),
-                   x_guest_key: str | None = Header(None)):
-    p = _caller(request, project_id, "admin", authorization, x_guest_key)
-    email = body.email.strip().lower()
-    if not EMAIL.match(email):
-        raise HTTPException(422, "invalid e-mail address")
+@router.patch("/projects/{project_id}/me")
+def my_alert_emails(project_id: str, body: AlertPrefs, request: Request, authorization: str | None = Header(None)):
+    """Each member turns alert e-mails on or off for themselves."""
+    p = _caller(request, project_id, "viewer", authorization, None)
+    if p.kind != "user":
+        raise HTTPException(403, "alert e-mails are for signed-in members")
     db = request.app.state.db
-    db.add_subscriber(project_id, body.name.strip(), "email", email)
-    db.audit(project_id, p.actor, "alerts.recipient_added", f"{body.name.strip()} <{email}>")
-    return {"ok": True}
-
-
-@router.delete("/projects/{project_id}/subscribers/{subscriber_id}")
-def delete_subscriber(project_id: str, subscriber_id: int, request: Request, authorization: str | None = Header(None),
-                      x_guest_key: str | None = Header(None)):
-    p = _caller(request, project_id, "admin", authorization, x_guest_key)
-    request.app.state.db.remove_subscriber(project_id, subscriber_id)
-    request.app.state.db.audit(project_id, p.actor, "alerts.recipient_removed", str(subscriber_id))
-    return {"ok": True}
+    db.set_email_alerts(project_id, p.user_id, body.email_alerts)
+    db.audit(project_id, p.actor, "alerts.email_on" if body.email_alerts else "alerts.email_off")
+    return {"email_alerts": body.email_alerts}
 
 
 # --- audit ----------------------------------------------------------------------------------------------------

@@ -20,6 +20,7 @@ CHANNELS = ("email",)  # alerts go out by e-mail (Resend)
 ROLES = ("owner", "admin", "viewer")
 PAIRING_TTL = timedelta(minutes=10)
 GUEST_TTL = timedelta(hours=2)
+LISTENING_WINDOW = timedelta(seconds=15)  # a device seen this recently counts as listening now
 PAIRING_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I
 
 _TABLES = """
@@ -42,6 +43,7 @@ CREATE INDEX IF NOT EXISTS events_project ON events(project_id, started_at);
 CREATE TABLE IF NOT EXISTS members (
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, user_id TEXT NOT NULL, email TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('owner','admin','viewer')), created_at TEXT NOT NULL,
+  email_alerts INTEGER NOT NULL DEFAULT 1,
   PRIMARY KEY (project_id, user_id));
 CREATE INDEX IF NOT EXISTS members_user ON members(user_id);
 CREATE TABLE IF NOT EXISTS invitations (
@@ -60,7 +62,8 @@ CREATE INDEX IF NOT EXISTS audit_project ON audit_log(project_id, at);
 # Columns added after the first release (SQLite files created earlier get them on startup).
 _ADDED = {"events": {"interference_note": "TEXT", "acknowledged_by": "TEXT"},
           "devices": {"revoked_at": "TEXT"},
-          "projects": {"is_guest": "INTEGER NOT NULL DEFAULT 0", "expires_at": "TEXT"}}
+          "projects": {"is_guest": "INTEGER NOT NULL DEFAULT 0", "expires_at": "TEXT"},
+          "members": {"email_alerts": "INTEGER NOT NULL DEFAULT 1"}}
 
 
 def now_iso() -> str:
@@ -95,6 +98,9 @@ class Database:
             with self._lock:
                 for stmt in _statements(_TABLES.format(serial="BIGSERIAL PRIMARY KEY")):
                     self._conn.execute(stmt)
+                for table, cols in _ADDED.items():
+                    for col, decl in cols.items():
+                        self._conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {decl}")
         else:
             if url != ":memory:":
                 Path(url).parent.mkdir(parents=True, exist_ok=True)
@@ -206,8 +212,23 @@ class Database:
         return rows[0] if rows else None
 
     def members(self, project_id: str) -> list[dict]:
-        return self._q("SELECT user_id, email, role, created_at FROM members WHERE project_id = ? ORDER BY created_at",
-                       (project_id,))
+        return [{**m, "email_alerts": bool(m["email_alerts"])} for m in self._q(
+            "SELECT user_id, email, role, created_at, email_alerts FROM members WHERE project_id = ? ORDER BY created_at",
+            (project_id,))]
+
+    def set_email_alerts(self, project_id: str, user_id: str, on: bool) -> None:
+        self._q("UPDATE members SET email_alerts = ? WHERE project_id = ? AND user_id = ?", (1 if on else 0, project_id, user_id))
+
+    def alert_recipients(self, project_id: str) -> list[dict]:
+        """Who gets alert e-mails: every member who has not muted them, plus recipients set up by the admin CLI."""
+        out, seen = [], set()
+        rows = [{"name": m["email"], "channel": "email", "target": m["email"]}
+                for m in self._q("SELECT email FROM members WHERE project_id = ? AND email_alerts = 1", (project_id,))]
+        for r in rows + [dict(s) for s in self.subscribers(project_id) if s["channel"] == "email"]:
+            if r["target"].lower() not in seen:
+                seen.add(r["target"].lower())
+                out.append(r)
+        return out
 
     def remove_member(self, project_id: str, user_id: str) -> None:
         self._q("DELETE FROM members WHERE project_id = ? AND user_id = ?", (project_id, user_id))
@@ -239,8 +260,17 @@ class Database:
         return accepted
 
     def workspaces_for(self, user_id: str) -> list[dict]:
-        return self._q("""SELECT p.id, p.name, m.role FROM members m JOIN projects p ON p.id = m.project_id
-                          WHERE m.user_id = ? ORDER BY p.created_at""", (user_id,))
+        """The user's workspaces with a live summary for the sidebar (devices, listening now, open alerts)."""
+        recent = _iso(datetime.now(timezone.utc) - LISTENING_WINDOW)
+        rows = self._q("""SELECT p.id, p.name, m.role, m.email_alerts,
+                   (SELECT COUNT(*) FROM devices d WHERE d.project_id = p.id AND d.revoked_at IS NULL) AS devices,
+                   (SELECT COUNT(*) FROM devices d WHERE d.project_id = p.id AND d.revoked_at IS NULL
+                      AND d.last_seen_at > ?) AS listening,
+                   (SELECT COUNT(*) FROM events e WHERE e.project_id = p.id AND e.ended_at IS NULL) AS open_alerts,
+                   (SELECT COUNT(*) FROM members x WHERE x.project_id = p.id) AS members
+                 FROM members m JOIN projects p ON p.id = m.project_id
+                 WHERE m.user_id = ? ORDER BY p.created_at""", (recent, user_id))
+        return [{**r, "email_alerts": bool(r["email_alerts"])} for r in rows]
 
     # --- devices & pairing -------------------------------------------------------------------
     def create_device(self, project_id: str, name: str, machine_id: str) -> tuple[str, str]:

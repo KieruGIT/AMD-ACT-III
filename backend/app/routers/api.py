@@ -134,7 +134,7 @@ async def analyze_window(
         recovered = event["ended_at"] is not None and event["ended_at"] == recorded_at
         if decision.triggered or recovered:
             project = dict(app.db.project(x_project_id))
-            subs = [dict(r) for r in app.db.subscribers(x_project_id)]
+            subs = app.db.alert_recipients(x_project_id)  # members (unless muted) + CLI recipients
             background.add_task(deliver, subs, "opened" if decision.triggered else "recovered", project, dict(device), event)
 
     result = {
