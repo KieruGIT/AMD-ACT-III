@@ -3,20 +3,33 @@ import { accounts } from '../api';
 import { AuthShell, Field, FormError, Notice, go } from '../components/auth/AuthShell';
 import { Button } from '../components/ui/primitives';
 import { saveCredentials } from '../lib/credentials';
-import { authConfigured, supabase } from '../lib/supabase';
+import { authConfigured, googleEnabled, signInWithGoogle, supabase } from '../lib/supabase';
 
 export function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState<'account' | 'guest' | null>(null);
+  const [busy, setBusy] = useState<'account' | 'guest' | 'google' | null>(null);
+  const [google, setGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authConfigured) return;
     void supabase().auth.getSession().then(({ data }) => data.session && go('/workspaces'));
+    void googleEnabled().then(setGoogle);
   }, []);
+
+  async function withGoogle() {
+    setBusy('google');
+    setError(null);
+    try {
+      await signInWithGoogle(); // leaves the page for Google
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(null);
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +77,22 @@ export function SignIn() {
       intro="Workspaces hold your machines' listening devices, alert history, team and e-mail alerts."
     >
       <div className="grid gap-5 rounded-[var(--radius-card)] border border-line bg-surface p-5 sm:p-6">
+        {google && (
+          <>
+            <Button onClick={() => void withGoogle()} disabled={busy !== null} className="gap-2.5">
+              <svg aria-hidden viewBox="0 0 24 24" className="size-4">
+                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z" />
+                <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z" />
+                <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6H1.3a12 12 0 0 0 0 10.8l4-3.1z" />
+                <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z" />
+              </svg>
+              {busy === 'google' ? 'Opening Google…' : 'Continue with Google'}
+            </Button>
+            <div className="flex items-center gap-3 text-xs text-ink-faint">
+              <span className="h-px flex-1 bg-line" /> or with e-mail <span className="h-px flex-1 bg-line" />
+            </div>
+          </>
+        )}
         {authConfigured ? (
           <form onSubmit={submit} className="grid gap-4">
             <div role="tablist" aria-label="Account" className="grid grid-cols-2 gap-1 rounded-full bg-surface-muted p-1">
