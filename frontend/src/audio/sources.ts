@@ -50,6 +50,8 @@ export async function startMicrophone(
 
   // Native rate is preserved; the backend resamples to the model rate (agreed integration plan).
   const ctx = new AudioContext();
+  // Created after the permission prompt, so the browser may start it suspended: wake it explicitly.
+  if (ctx.state === 'suspended') await ctx.resume().catch(() => undefined);
   try {
     await ctx.audioWorklet.addModule('/worklets/capture-processor.js');
   } catch {
