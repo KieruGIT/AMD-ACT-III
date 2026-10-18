@@ -25,7 +25,10 @@ N_FFT = 1024
 HOP = 512
 BANDS = np.geomspace(60, SAMPLE_RATE_HZ / 2, 33)
 MIN_STD_DB = 1.5  # floor on per-band spread, so a very steady machine does not alarm on tiny wobbles
-THRESHOLD_FLOOR, THRESHOLD_CAP, THRESHOLD_MARGIN = 2.5, 6.0, 1.3
+# The threshold is THRESHOLD_MARGIN x how unusual the learned minute's own 95th-percentile second looked, kept within
+# [floor, cap]. Measured on a real fan recorded with a phone: normal 0.23-0.49, a rattling defect 0.85-2.36, the learned
+# threshold ~0.9. The old floor of 2.5 hid every defect, so the floor is only a guard against a near-silent minute.
+THRESHOLD_FLOOR, THRESHOLD_CAP, THRESHOLD_MARGIN, THRESHOLD_PCT = 0.8, 3.0, 1.3, 95
 LEVEL_NOTE_DB = 10.0  # overall level this far from the learned normal earns a note (never an anomaly)
 
 
@@ -45,9 +48,14 @@ def _rms_z(shape: np.ndarray, mean: np.ndarray, std: np.ndarray) -> float:
     return float(np.sqrt(np.mean(((shape - mean) / std) ** 2)))
 
 
+def deviation(f: np.ndarray, base: dict) -> float:
+    """How far one window's band energies (dB) are from the learned normal, by shape, not loudness."""
+    return _rms_z(f - f.mean(), np.asarray(base["mean"]), np.asarray(base["std"]))
+
+
 class HeuristicScorer:
     mode = "heuristic"
-    version = "learned-on-site-heuristic-0.2"
+    version = "learned-on-site-heuristic-0.3"
     score_name = "sound_shape_deviation"
     ready = True
     threshold = 3.0  # shown before a device has learned; each device then gets its own from the learned minute
@@ -67,7 +75,8 @@ class HeuristicScorer:
         for i in range(len(shape)):
             rest = np.delete(shape, i, axis=0)
             loo.append(_rms_z(shape[i], rest.mean(axis=0), np.maximum(rest.std(axis=0), MIN_STD_DB)))
-        threshold = float(np.clip(THRESHOLD_MARGIN * max(loo), THRESHOLD_FLOOR, THRESHOLD_CAP))
+        # a percentile, not the max: one cough or knock while learning must not make the device deaf
+        threshold = float(np.clip(THRESHOLD_MARGIN * np.percentile(loo, THRESHOLD_PCT), THRESHOLD_FLOOR, THRESHOLD_CAP))
         return {"mean": mean.tolist(), "std": std.tolist(), "level_mean": float(level.mean()),
                 "level_std": float(level.std()), "threshold": round(threshold, 3), "windows": len(feats)}
 
@@ -85,7 +94,6 @@ class HeuristicScorer:
                 state.pop("learning")
                 state["just_locked"] = True
             return Score(None, self.threshold, (time.perf_counter() - t0) * 1000)
-        level = float(f.mean())
-        value = _rms_z(f - level, np.asarray(base["mean"]), np.asarray(base["std"]))
-        state["level_delta_db"] = level - base["level_mean"]
+        value = deviation(f, base)
+        state["level_delta_db"] = float(f.mean()) - base["level_mean"]
         return Score(value, base["threshold"], (time.perf_counter() - t0) * 1000)

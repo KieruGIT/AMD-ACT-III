@@ -19,7 +19,7 @@ def send(client, project, seq, *, anomaly=False, session="session-0001", key=Non
 
 def test_health_and_config_are_public(client):
     h = client.get("/api/v1/health").json()
-    assert h == {"service": "ok", "model_ready": True, "mode": "heuristic", "model_version": "learned-on-site-heuristic-0.2"}
+    assert h == {"service": "ok", "model_ready": True, "mode": "heuristic", "model_version": "learned-on-site-heuristic-0.3"}
     c = client.get("/api/v1/config").json()
     assert c["input"]["sample_rate_hz"] == 16_000 and 48_000 in c["input"]["accepted_sample_rates_hz"]
     assert c["score"]["is_probability"] is False
