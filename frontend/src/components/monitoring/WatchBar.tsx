@@ -31,14 +31,9 @@ export function WatchBar({
         <div className="grid gap-0.5 text-sm">
           <p className="font-semibold">No listening devices in {overview.name} yet.</p>
           <p className="text-ink-muted">
-            {onAddDevice ? 'Pair a phone, laptop or sensor placed next to the machine.' : 'Ask a workspace admin to pair one.'}
+            {onAddDevice ? 'Use Add device above to pair a phone, laptop or sensor placed next to the machine.' : 'Ask a workspace admin to pair one.'}
           </p>
         </div>
-        {onAddDevice && (
-          <button type="button" onClick={onAddDevice} className="inline-flex min-h-11 items-center rounded-full bg-teal px-5 text-sm font-semibold text-white hover:bg-teal-strong">
-            Add a device
-          </button>
-        )}
       </div>
     );
   }

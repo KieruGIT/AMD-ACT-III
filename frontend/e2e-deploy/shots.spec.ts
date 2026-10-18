@@ -12,7 +12,7 @@ test('capture account screens', async ({ page }) => {
   await page.waitForURL(/\/app$/);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${dir}/console-guest.png` });
-  await page.getByRole('button', { name: 'Add a device' }).click();
+  await page.getByRole('button', { name: 'Add device' }).click();
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${dir}/console-add-device.png` });
   await page.getByRole('button', { name: 'Account' }).click();

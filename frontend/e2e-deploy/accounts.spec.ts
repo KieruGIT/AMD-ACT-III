@@ -12,7 +12,7 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await expect(admin.getByTestId('guest-countdown')).toHaveText(/^1:59:\d\d$/); // live countdown to deletion
 
   // One click: a pop-up with the code and QR.
-  await admin.getByRole('button', { name: 'Add a device' }).click();
+  await admin.getByRole('button', { name: 'Add device' }).click();
   const add = admin.getByRole('dialog', { name: 'Add a device' });
   await expect(add.getByLabel(/Pairing code/)).toBeVisible();
   const code = (await add.locator('p.num').first().textContent())!.trim();
