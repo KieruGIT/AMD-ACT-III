@@ -29,7 +29,7 @@ export interface HttpClient extends MonitoringClient {
 
 /** Accounts and administration. Project-scoped calls act on the current workspace. */
 export interface AccountApi {
-  startGuest(): Promise<{ project_id: string; guest_key: string; expires_at: string }>;
+  startGuest(name: string): Promise<{ project_id: string; name: string; guest_key: string; expires_at: string }>;
   me(): Promise<Me>;
   createWorkspace(name: string): Promise<Workspace>;
   pair(code: string, deviceName?: string): Promise<PairedDevice>;
@@ -96,7 +96,7 @@ export function createHttpClient(
   });
 
   const account: AccountApi = {
-    startGuest: () => json('/guest', body('POST')),
+    startGuest: (name) => json('/guest', body('POST', { name })),
     me: () => json('/me'),
     createWorkspace: (name) => json('/workspaces', body('POST', { name })),
     pair: (code, deviceName) => json('/pair', body('POST', { code, device_name: deviceName })),

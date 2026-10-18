@@ -1,4 +1,5 @@
-import { MonitorSmartphone } from 'lucide-react';
+import { Mic, MonitorSmartphone, Smartphone } from 'lucide-react';
+import { Button } from '../ui/primitives';
 import type { ProjectOverview } from '../../types/monitoring';
 import { formatAgo } from '../../lib/format';
 
@@ -12,6 +13,7 @@ export function WatchBar({
   onSelect,
   now,
   onAddDevice,
+  onUseMic,
 }: {
   overview: ProjectOverview | null;
   error: string | null;
@@ -19,6 +21,7 @@ export function WatchBar({
   onSelect: (id: string) => void;
   now: number;
   onAddDevice?: () => void;
+  onUseMic?: () => void;
 }) {
   if (error && !overview) {
     return <p role="alert" className="text-sm text-anomaly">Can't load the workspace: {error}.</p>;
@@ -27,13 +30,27 @@ export function WatchBar({
   const devices = overview.devices.filter((d) => !d.pending); // waiting for approval: nothing to watch yet
   if (devices.length === 0) {
     return (
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="grid gap-4">
         <div className="grid gap-0.5 text-sm">
-          <p className="font-semibold">No listening devices in {overview.name} yet.</p>
+          <p className="font-semibold">Nothing is listening in {overview.name} yet.</p>
           <p className="text-ink-muted">
-            {onAddDevice ? 'Use Add device above to pair a phone, laptop or sensor placed next to the machine.' : 'Ask a workspace admin to pair one.'}
+            {onAddDevice
+              ? 'Put a microphone next to the machine. The quickest test is the microphone of the computer you are on now.'
+              : 'Ask a workspace admin to start a microphone.'}
           </p>
         </div>
+        {onAddDevice && onUseMic && (
+          <div className="flex flex-wrap gap-2">
+            <Button variant="primary" className="min-h-11 gap-2 px-5" onClick={onUseMic}>
+              <Mic aria-hidden className="size-4" />
+              Use this computer's microphone
+            </Button>
+            <Button className="min-h-11 gap-2 px-5" onClick={onAddDevice}>
+              <Smartphone aria-hidden className="size-4" />
+              Pair a phone or sensor
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

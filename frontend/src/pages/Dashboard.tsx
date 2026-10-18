@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import type { RowAction } from '../components/ui/RowMenu';
 import { AssessmentCard } from '../components/monitoring/AssessmentCard';
 import { ControlBar } from '../components/monitoring/ControlBar';
+import { LearningCard } from '../components/monitoring/LearningCard';
 import { SettingsPanel } from '../components/monitoring/SettingsPanel';
 import { SignalChain } from '../components/monitoring/SignalChain';
 import { StatusBanner } from '../components/monitoring/StatusBanner';
@@ -27,9 +28,10 @@ import { playAlertTone } from '../lib/alertSound';
 import { clearCredentials, credentials, saveCredentials } from '../lib/credentials';
 import { accessToken } from '../lib/supabase';
 import { formatAgo, timeZoneLabel } from '../lib/format';
+import { createGuestWorkspace, forgetAllGuestWorkspaces, forgetGuestWorkspace, guestWorkspaces, openGuest, renameGuestWorkspace } from '../lib/guest';
 import { assessmentView } from '../lib/sessionReducer';
 import { open, signOut } from '../lib/session';
-import type { Me } from '../types/monitoring';
+import type { Me, Workspace } from '../types/monitoring';
 
 /** A browser that listens for its own workspace goes back to managing it (its earlier access was kept). */
 function goHome(add?: 'device' | 'member') {
@@ -38,6 +40,13 @@ function goHome(add?: 'device' | 'member') {
 }
 
 const SEEN_KEY = 'msm:seen-alerts';
+
+/** Guest mode ends here: this browser forgets its guest workspaces (the server deletes them after 2 h anyway). */
+function leaveGuest() {
+  forgetAllGuestWorkspaces();
+  clearCredentials();
+  location.assign('/signin');
+}
 
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -67,23 +76,27 @@ function accountBlock(me: Me | null, emailAlerts: boolean | undefined, toggleEma
         actions: [
           { label: 'Create an account', onClick: () => location.assign('/signin') },
           settings,
-          { label: 'Leave guest workspace', onClick: () => (clearCredentials(), location.assign('/signin')) },
+          { label: 'Leave guest mode', onClick: leaveGuest },
         ],
       };
     case 'device':
       return {
         title: credentials?.deviceName ?? 'Listening device',
-        subtitle: 'This browser listens',
+        subtitle: credentials?.home ? "This computer's microphone" : 'This device listens',
         actions: [
           settings,
           {
-            label: 'Unpair this browser',
+            label: credentials?.home ? 'Stop using this microphone' : 'Unpair this device',
             onClick: () => {
               if (credentials?.home) return goHome();
               clearCredentials();
               void accessToken().then((t) => location.assign(t ? '/workspaces' : '/signin'));
             },
           },
+          // listening from a guest workspace: leave in one step, not "stop using" then "leave"
+          ...(credentials?.home?.guestKey
+            ? [{ label: 'Leave guest mode', onClick: leaveGuest }]
+            : []),
         ],
       };
     case 'viewer':
@@ -109,6 +122,7 @@ export function Dashboard() {
   const [editName, setEditName] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [addSignal, setAddSignal] = useState(0);
+  const [micSignal, setMicSignal] = useState(0);
   const [memberSignal, setMemberSignal] = useState(0);
   // arriving with ?add=device|member (from a listening browser's buttons) opens that pop-up once the workspace loads
   const [pendingAdd] = useState(() => new URLSearchParams(location.search).get('add'));
@@ -181,13 +195,17 @@ export function Dashboard() {
         { label: 'Reject', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
       ];
     }
-    const learned = watch.overview?.devices.find((x) => x.id === d.id)?.learned_at;
     return [
-      ...(learned ? [{ label: 'Re-learn normal sound', onClick: deviceAction(() => api.relearnDevice(d.id)) }] : []),
       { label: 'Remove device', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
     ];
   };
-  const watchedName = watch.overview?.devices.find((d) => d.id === watch.deviceId)?.name;
+  const watchedDevice = watch.overview?.devices.find((d) => d.id === watch.deviceId);
+  // a guest's workspaces: the ones this browser made (the open one too, in case it predates the list)
+  const guestList: Workspace[] = guestWorkspaces().map((w) => ({ id: w.projectId, name: w.name, role: 'owner' }));
+  if (role === 'guest' && credentials && !guestList.some((w) => w.id === credentials?.projectId)) {
+    guestList.unshift({ id: credentials.projectId, name: watch.overview?.name ?? credentials.projectName ?? 'Workspace', role: 'owner' });
+  }
+  const watchedName = watchedDevice?.name;
   const hasActiveDevices = (watch.overview?.devices ?? []).some((d) => !d.pending);
 
   const openAlerts = () => {
@@ -200,6 +218,7 @@ export function Dashboard() {
     setEditError(null);
     try {
       const r = await httpClient!.account.renameWorkspace(editName.trim());
+      if (role === 'guest') renameGuestWorkspace(r.id, r.name);
       if (credentials) saveCredentials({ ...credentials, projectName: r.name });
       location.reload();
     } catch (err) {
@@ -210,8 +229,9 @@ export function Dashboard() {
     setEditError(null);
     try {
       await httpClient!.account.deleteWorkspace();
+      if (role === 'guest') forgetGuestWorkspace(credentials!.projectId);
       clearCredentials();
-      location.assign(role === 'guest' ? '/signin' : '/workspaces');
+      location.assign(role === 'guest' ? '/workspaces?guest' : '/workspaces');
     } catch (err) {
       setEditError((err as Error).message);
     }
@@ -270,13 +290,24 @@ export function Dashboard() {
   return (
     <div className="min-h-dvh lg:pl-64">
       <Sidebar
-        workspaces={credentials?.member ? (me?.workspaces ?? null) : null}
+        workspaces={credentials?.member ? (me?.workspaces ?? null) : role === 'guest' ? guestList : null}
         currentId={credentials?.projectId ?? null}
         currentName={credentials?.projectName ?? watch.overview?.name ?? 'Workspace'}
         demo={isDemo}
+        showDemo={isDemo || !(credentials?.guestKey || credentials?.home?.guestKey)}
         hasWorkspace={!!credentials}
-        onOpen={(w) => (w.id === credentials?.projectId ? goHome() : open(w))}
-        onCreate={credentials?.member ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
+        onOpen={(w) => {
+          if (w.id === credentials?.projectId) return goHome();
+          const g = guestWorkspaces().find((x) => x.projectId === w.id);
+          return g ? openGuest(g) : open(w);
+        }}
+        onCreate={
+          credentials?.member
+            ? async (name) => open(await accounts.createWorkspace(name))
+            : role === 'guest'
+              ? createGuestWorkspace
+              : undefined
+        }
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}
         devices={watching ? treeDevices : []}
         selectedDeviceId={watch.deviceId}
@@ -319,11 +350,10 @@ export function Dashboard() {
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <p className="eyebrow text-ink-faint">
-              {role === 'device' ? 'This browser is listening' : watchedName ? `Live monitoring · ${watchedName}` : 'Live monitoring'}
+              {role === 'device' ? (credentials?.home ? "Using this computer's microphone" : 'This device is listening') : watchedName ? `Live monitoring · ${watchedName}` : 'Live monitoring'}
             </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
-              {profile ? profile.label : 'Machine monitor'}
-              {profile && <span className="ml-3 align-middle text-base font-medium tracking-normal text-ink-faint">{profile.id}</span>}
+              {watching ? (watchedName ?? watch.overview?.name ?? 'Workspace') : (credentials?.deviceName ?? 'This device')}
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -364,6 +394,7 @@ export function Dashboard() {
               onSelect={watch.selectDevice}
               now={now}
               onAddDevice={canManage ? () => setAddSignal((n) => n + 1) : undefined}
+              onUseMic={canManage ? () => setMicSignal((n) => n + 1) : undefined}
             />
           ) : role === 'unconfigured' ? (
             <div className="grid gap-1 text-sm">
@@ -389,6 +420,18 @@ export function Dashboard() {
           />
           )}
         </Panel>
+        )}
+
+        {watching ? (
+          watchedDevice && !watchedDevice.pending && (
+            <LearningCard
+              learning={watchedDevice.learned_at === null ? watchedDevice.latest?.learning : null}
+              learnedAt={watchedDevice.learned_at}
+              onRelearn={canManage && httpClient ? () => httpClient!.account.relearnDevice(watchedDevice.id).finally(watch.reload) : undefined}
+            />
+          )
+        ) : (
+          <LearningCard learning={state.latest?.learning} learnedAt={null} />
         )}
 
         <StatusBanner
@@ -454,7 +497,7 @@ export function Dashboard() {
 
 
             {watching && watch.overview && (
-              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} onChanged={watch.reload} headless />
+              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} micSignal={micSignal} onChanged={watch.reload} headless />
             )}
             {(role === 'member' || role === 'guest') && watch.overview?.role && (
               <MembersCard myRole={watch.overview.role} isGuest={role === 'guest'} addSignal={memberSignal} />

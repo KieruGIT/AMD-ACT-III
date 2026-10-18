@@ -14,7 +14,8 @@ ACCEPTED_INPUT_RATES = (8_000, 16_000, 22_050, 32_000, 44_100, 48_000)
 ALERT_POLICY = {"min_anomalous_windows": 3, "consider_last_valid_windows": 5, "cooldown_seconds": 30}
 
 PROFILES = {
-    "fan_01": {"id": "fan_01", "label": "Demo Fan", "machine_type": "fan"},
+    # one profile for now; the id is kept for stored devices. The on-site scorer learns whatever machine it hears.
+    "fan_01": {"id": "fan_01", "label": "Machine", "machine_type": "any"},
 }
 
 

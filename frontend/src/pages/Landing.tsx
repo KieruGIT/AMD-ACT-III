@@ -169,7 +169,7 @@ export function Landing() {
                 Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
-              <CTA href="/demo" variant="secondary">Try the demo</CTA>
+              <CTA href="/demo" variant="secondary">Try the demo · simulated audio</CTA>
             </div>
           </div>
           <div className="h-[480px] sm:h-[560px] lg:h-auto">

@@ -32,12 +32,14 @@ export function Sidebar({
   account,
   demo = false,
   hasWorkspace = false,
+  showDemo = true,
   devices = [],
   selectedDeviceId = null,
   onSelectDevice,
   deviceActions,
   onEditWorkspace,
 }: {
+  showDemo?: boolean; // guests already have a real workspace to try, so no Demo link
   workspaces: Workspace[] | null; // null: this browser is not signed in (guest, device, demo): just the current one
   currentId: string | null;
   currentName: string;
@@ -173,6 +175,7 @@ export function Sidebar({
         })}
       </nav>
 
+      {showDemo && (
       <div className="mt-4 px-2">
         <a
           href={demo ? (hasWorkspace ? '/app' : '/signin') : '/demo'}
@@ -186,6 +189,7 @@ export function Sidebar({
           </span>
         </a>
       </div>
+      )}
 
       {account && <AccountMenu account={account} />}
 

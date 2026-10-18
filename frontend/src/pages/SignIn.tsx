@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
-import { accounts } from '../api';
 import { AuthShell, Field, FormError, Notice, go } from '../components/auth/AuthShell';
 import { Button } from '../components/ui/primitives';
-import { saveCredentials } from '../lib/credentials';
 import { authConfigured, googleEnabled, signInWithGoogle, supabase } from '../lib/supabase';
 
 export function SignIn() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState<'account' | 'guest' | 'google' | null>(null);
+  const [busy, setBusy] = useState<'account' | 'google' | null>(null);
   const [google, setGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -58,18 +56,8 @@ export function SignIn() {
     }
   }
 
-  async function guest() {
-    setBusy('guest');
-    setError(null);
-    try {
-      const g = await accounts.startGuest();
-      saveCredentials({ projectId: g.project_id, projectName: 'Guest workspace', guestKey: g.guest_key, expiresAt: g.expires_at });
-      go('/app');
-    } catch (err) {
-      setError((err as Error).message);
-      setBusy(null);
-    }
-  }
+  // A guest starts empty and names their own workspaces (nothing is made until they do).
+  const guest = () => go('/workspaces?guest');
 
   return (
     <AuthShell
@@ -141,9 +129,9 @@ export function SignIn() {
 
         <div className="grid gap-2">
           <Button onClick={() => void guest()} disabled={busy !== null}>
-            {busy === 'guest' ? 'Preparing a guest workspace…' : 'Continue as guest'}
+            Continue as guest
           </Button>
-          <p className="text-center text-xs text-ink-faint">No account. Nothing is kept: the guest workspace is deleted after 2 hours.</p>
+          <p className="text-center text-xs text-ink-faint">No account. Nothing is kept: guest workspaces are deleted after 2 hours.</p>
         </div>
       </div>
 

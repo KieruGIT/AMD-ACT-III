@@ -1,4 +1,4 @@
-import { Plus, Smartphone } from 'lucide-react';
+import { Mic, Plus, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { accounts, httpClient } from '../../api';
@@ -21,6 +21,7 @@ export function DevicesCard({
   profiles,
   canManage,
   addSignal,
+  micSignal = 0,
   onChanged,
   headless = false,
 }: {
@@ -28,6 +29,7 @@ export function DevicesCard({
   profiles: MachineProfile[];
   canManage: boolean;
   addSignal: number; // bumped by the monitor's "Add a device" button
+  micSignal?: number; // bumped by "Use this computer's microphone" outside the pop-up
   onChanged: () => void;
   headless?: boolean; // only the pop-ups (add + approve); the device list is in the sidebar
 }) {
@@ -60,13 +62,15 @@ export function DevicesCard({
     void QRCode.toDataURL(`${location.origin}/pair#code=${code.code}`, { margin: 1, width: 400, color: { dark: '#111e3b', light: '#ffffff' } }).then(setQr);
   }, [code]);
 
-  async function run(what: string, fn: () => Promise<void>) {
+  async function run(what: string, fn: () => Promise<void>): Promise<boolean> {
     setBusy(what);
     setError(null);
     try {
       await fn();
+      return true;
     } catch (err) {
       setError((err as Error).message);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -92,8 +96,8 @@ export function DevicesCard({
   // The admin turns this browser into the listener themselves: no approval step needed.
   const listenHere = () =>
     run('self', async () => {
-      const c = code ?? (await httpClient!.account.pairingCode('This browser', machine));
-      const d = await accounts.pair(c.code, 'This browser');
+      const c = code ?? (await httpClient!.account.pairingCode('This computer', machine));
+      const d = await accounts.pair(c.code, 'This computer');
       await httpClient!.account.approveDevice(d.device_id);
       // keep this browser's workspace access, so managing the workspace stays one click away
       const home = credentials ? { ...credentials, home: undefined } : undefined;
@@ -121,6 +125,13 @@ export function DevicesCard({
     void add();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per click
   }, [addSignal]);
+
+  // "Use this computer's microphone" on the empty workspace: straight to listening; the pop-up only shows a failure.
+  useEffect(() => {
+    if (!micSignal || !canManage) return;
+    void listenHere().then((ok) => ok || setAdding(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per click
+  }, [micSignal]);
 
   const popup = canManage && !adding ? pending.find((d) => !dismissed.has(d.id)) : undefined;
 
@@ -231,6 +242,15 @@ export function DevicesCard({
           </div>
         ) : code && left > 0 ? (
           <div className="grid justify-items-center gap-2 text-center">
+            <Button variant="primary" className="min-h-11 w-full gap-2" disabled={busy !== null} onClick={() => void listenHere()}>
+              <Mic aria-hidden className="size-4" />
+              {busy === 'self' ? 'Starting…' : "Use this computer's microphone"}
+            </Button>
+            <p className="mt-2 mb-1 flex w-full items-center gap-3 text-xs text-ink-faint">
+              <span className="h-px flex-1 bg-line" />
+              or pair a phone or sensor
+              <span className="h-px flex-1 bg-line" />
+            </p>
             {qr && <img src={qr} alt={`QR code to pair ${code.device_name}`} className="size-48 rounded-xl border border-line bg-white" />}
             <p className="num text-3xl font-semibold tracking-[0.16em]" aria-label={`Pairing code ${code.code.split('').join(' ')}`}>
               {code.code}
@@ -242,9 +262,6 @@ export function DevicesCard({
             <p className="num text-xs text-ink-faint">
               Expires in {Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, '0')} · works once
             </p>
-            <button type="button" onClick={() => void listenHere()} disabled={busy !== null} className="mt-1 text-sm font-semibold text-teal hover:underline">
-              {busy === 'self' ? 'Pairing…' : 'Or listen with this browser'}
-            </button>
           </div>
         ) : code ? (
           <div className="grid justify-items-center gap-3 text-center">

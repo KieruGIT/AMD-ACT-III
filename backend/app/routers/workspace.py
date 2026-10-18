@@ -32,11 +32,17 @@ def _caller(request: Request, project_id: str, min_role: str, authorization: str
 
 
 # --- guest mode -------------------------------------------------------------------------------------
+class NewGuestWorkspace(BaseModel):
+    name: str = Field("Guest workspace", min_length=2, max_length=60)
+
+
 @router.post("/guest")
-def start_guest(request: Request):
-    """A temporary workspace for trying the product without an account. Nothing is kept: it is deleted after 2 h."""
-    pid, key, expires = request.app.state.db.create_guest_workspace()
-    return {"project_id": pid, "guest_key": key, "expires_at": expires}
+def start_guest(request: Request, body: NewGuestWorkspace | None = None):
+    """A temporary workspace, named by the guest, for trying the product without an account. Nothing is kept: it is
+    deleted after 2 h. A guest can make several; each one has its own key."""
+    name = (body or NewGuestWorkspace()).name.strip()
+    pid, key, expires = request.app.state.db.create_guest_workspace(name)
+    return {"project_id": pid, "name": name, "guest_key": key, "expires_at": expires}
 
 
 # --- me ---------------------------------------------------------------------------------------------

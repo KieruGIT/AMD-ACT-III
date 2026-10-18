@@ -152,9 +152,11 @@ def test_wrong_codes_are_rate_limited(c):
 
 
 def test_guest_workspace_is_temporary_and_cannot_invite(c):
-    g = c.post("/api/v1/guest").json()
+    g = c.post("/api/v1/guest", json={"name": "Garage"}).json()
     h = {"X-Guest-Key": g["guest_key"]}
     ov = c.get(f"/api/v1/projects/{g['project_id']}", headers=h).json()
+    assert ov["name"] == "Garage" and g["name"] == "Garage"
+    assert c.post("/api/v1/guest", json={"name": "x"}).status_code == 422
     assert ov["is_guest"] is True and ov["role"] == "owner" and ov["expires_at"] == g["expires_at"]
     assert c.post(f"/api/v1/projects/{g['project_id']}/pairing-codes", json={"device_name": "Laptop"}, headers=h).status_code == 200
     assert c.post(f"/api/v1/projects/{g['project_id']}/invitations", json={"email": "x@example.com"}, headers=h).status_code == 403

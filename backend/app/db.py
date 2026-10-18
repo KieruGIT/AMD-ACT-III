@@ -169,13 +169,13 @@ class Database:
         self.add_member(project_id, user_id, email, "owner")
         return project_id
 
-    def create_guest_workspace(self) -> tuple[str, str, str]:
+    def create_guest_workspace(self, name: str = "Guest workspace") -> tuple[str, str, str]:
         """(project_id, guest key, expires_at). Deleted with everything in it after GUEST_TTL."""
         self.purge_expired_guests()
         project_id, key = f"guest-{secrets.token_hex(5)}", new_key("gk")
         expires = _iso(datetime.now(timezone.utc) + GUEST_TTL)
         self._q("INSERT INTO projects (id, name, viewer_key_hash, created_at, is_guest, expires_at) VALUES (?,?,?,?,1,?)",
-                (project_id, "Guest workspace", hash_key(key), now_iso(), expires))
+                (project_id, name, hash_key(key), now_iso(), expires))
         return project_id, key, expires
 
     def purge_expired_guests(self) -> int:
