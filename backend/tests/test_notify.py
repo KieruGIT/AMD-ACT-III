@@ -43,6 +43,13 @@ def test_invitation_mail(monkeypatch):
     ok = asyncio.run(notify.send_invitation("new@example.com", "Plant A", "viewer", "boss@example.com",
                                             transport=httpx.MockTransport(handler)))
     assert ok and seen[0]["to"] == ["new@example.com"] and "https://msm.test/signin" in seen[0]["text"]
+    assert 'href="https://msm.test/signin"' in seen[0]["html"] and "Join Plant A" in seen[0]["html"]
+
+
+def test_names_are_escaped_in_html():
+    from app.notify import format_message
+    _, _, html = format_message("opened", {"id": "x", "name": "<script>x</script>"}, {"name": "A & B"}, EVENT)
+    assert "<script>x" not in html and "&lt;script&gt;" in html and "A &amp; B" in html
 
 
 def test_email_goes_through_resend(monkeypatch):
@@ -59,4 +66,5 @@ def test_email_goes_through_resend(monkeypatch):
     url, auth, body = seen[0]
     assert sent == ["email:Ops"] and url == "https://api.resend.com/emails" and auth == "Bearer re_test"
     assert body["to"] == ["ops@example.com"] and body["from"] == "Monitor <alerts@example.com>"
-    assert body["subject"].startswith("Persistent acoustic anomaly")
+    assert body["subject"] == "Unusual sound: Phone at fan" and "Persistent acoustic anomaly" in body["text"]
+    assert "<html" in body["html"] and "Phone at fan sounds different" in body["html"] and "Open the console" in body["html"]
