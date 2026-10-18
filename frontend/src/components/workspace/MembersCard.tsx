@@ -44,7 +44,7 @@ function ago(at: string) {
  * in with that address. Every member gets alert e-mails (they can turn them off for themselves). Admins also see the
  * latest activity here.
  */
-export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolean }) {
+export function MembersCard({ myRole, isGuest, addSignal = 0 }: { myRole: Role; isGuest: boolean; addSignal?: number }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [log, setLog] = useState<AuditEntry[]>([]);
@@ -57,6 +57,11 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
   const [busy, setBusy] = useState(false);
   const api = httpClient!.account;
   const isAdmin = RANK[myRole] >= RANK.admin;
+
+  // the workspace's "Add member" button opens the same pop-up
+  useEffect(() => {
+    if (addSignal) setAdding(true);
+  }, [addSignal]);
 
   const load = useCallback(async () => {
     try {

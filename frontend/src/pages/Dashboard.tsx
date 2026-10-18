@@ -1,3 +1,4 @@
+import { Plus, UserPlus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { accounts, client, httpClient, isDemo, role } from '../api';
 import type { SourceKind } from '../audio/sources';
@@ -96,6 +97,7 @@ export function Dashboard() {
   const [allAlerts, setAllAlerts] = useState(false);
   const alertsRef = useRef<HTMLDivElement>(null);
   const [addSignal, setAddSignal] = useState(0);
+  const [memberSignal, setMemberSignal] = useState(0);
   const [me, setMe] = useState<Me | null>(null);
   const [source, setSource] = useState<SourceKind>(client.mode === 'mock' ? 'simulated' : 'microphone');
   const [machineId, setMachineId] = useState('');
@@ -109,7 +111,7 @@ export function Dashboard() {
 
   // Signed in: my workspaces for the sidebar, with their live status (refreshed now and then).
   const loadMe = useCallback(() => {
-    if (role === 'member') accounts.me().then(setMe, () => undefined);
+    if (credentials?.member) accounts.me().then(setMe, () => undefined); // also in the demo, so the sidebar keeps them
   }, []);
   useEffect(() => {
     loadMe();
@@ -149,13 +151,13 @@ export function Dashboard() {
   return (
     <div className="min-h-dvh lg:pl-64">
       <Sidebar
-        workspaces={role === 'member' ? (me?.workspaces ?? null) : null}
-        currentId={isDemo ? null : (credentials?.projectId ?? null)}
-        currentName={isDemo ? 'Demo' : (credentials?.projectName ?? watch.overview?.name ?? 'Workspace')}
+        workspaces={credentials?.member ? (me?.workspaces ?? null) : null}
+        currentId={credentials?.projectId ?? null}
+        currentName={credentials?.projectName ?? watch.overview?.name ?? 'Workspace'}
         demo={isDemo}
         hasWorkspace={!!credentials}
-        onOpen={(w) => open(w)}
-        onCreate={role === 'member' ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
+        onOpen={(w) => (w.id === credentials?.projectId ? location.assign('/app') : open(w))}
+        onCreate={credentials?.member ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}
       />
 
@@ -189,10 +191,25 @@ export function Dashboard() {
               {profile && <span className="ml-3 align-middle text-base font-medium tracking-normal text-ink-faint">{profile.id}</span>}
             </h1>
           </div>
-          <p className="max-w-md text-sm text-ink-muted">
-            Listens for acoustic patterns that differ from this machine's learned normal sound and raises a review alert
-            when they persist.
-          </p>
+          {canManage ? (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="primary" className="min-h-10 gap-1.5 px-4" onClick={() => setAddSignal((n) => n + 1)}>
+                <Plus aria-hidden className="size-4" />
+                Add device
+              </Button>
+              {(role === 'member' || role === 'guest') && (
+                <Button className="min-h-10 gap-1.5 px-4" onClick={() => setMemberSignal((n) => n + 1)}>
+                  <UserPlus aria-hidden className="size-4" />
+                  Add member
+                </Button>
+              )}
+            </div>
+          ) : (
+            <p className="max-w-md text-sm text-ink-muted">
+              Listens for acoustic patterns that differ from this machine's learned normal sound and raises a review alert
+              when they persist.
+            </p>
+          )}
         </div>
 
         <Panel className="!p-4 sm:!p-5">
@@ -311,7 +328,7 @@ export function Dashboard() {
               <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} onChanged={watch.reload} />
             )}
             {(role === 'member' || role === 'guest') && watch.overview?.role && (
-              <MembersCard myRole={watch.overview.role} isGuest={role === 'guest'} />
+              <MembersCard myRole={watch.overview.role} isGuest={role === 'guest'} addSignal={memberSignal} />
             )}
           </div>
         </div>

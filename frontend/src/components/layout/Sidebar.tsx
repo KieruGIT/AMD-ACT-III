@@ -37,7 +37,7 @@ export function Sidebar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const list: Workspace[] = workspaces ?? (currentId && !demo ? [{ id: currentId, name: currentName, role: 'owner' }] : []);
+  const list: Workspace[] = workspaces ?? (currentId ? [{ id: currentId, name: currentName, role: 'owner' }] : []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +74,7 @@ export function Sidebar({
 
       <nav aria-label="Workspaces" className="mt-2 grid gap-0.5 overflow-y-auto px-2">
         {list.map((w) => {
-          const current = w.id === currentId;
+          const current = w.id === currentId && !demo; // in the demo, your workspace is one click away
           const tone = (w.open_alerts ?? 0) > 0 ? 'bg-anomaly' : (w.listening ?? 0) > 0 ? 'bg-normal' : 'bg-line-strong';
           const status =
             (w.open_alerts ?? 0) > 0
@@ -128,7 +128,7 @@ export function Sidebar({
         <button type="button" aria-label="Open menu" onClick={() => setOpen(true)} className="grid size-10 place-items-center rounded-full hover:bg-surface-muted">
           <Menu aria-hidden className="size-5" />
         </button>
-        <span className="truncate text-sm font-semibold">{currentName}</span>
+        <span className="truncate text-sm font-semibold">{demo ? 'Demo' : currentName}</span>
       </div>
 
       {/* Desktop: fixed on the left */}
