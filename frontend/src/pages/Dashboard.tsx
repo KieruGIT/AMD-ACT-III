@@ -1,5 +1,5 @@
-import { Plus, UserPlus } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Bell, Plus, UserPlus } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { accounts, client, httpClient, isDemo, role } from '../api';
 import type { SourceKind } from '../audio/sources';
 import { AlertList } from '../components/alerts/AlertList';
@@ -7,7 +7,9 @@ import { AlertToast } from '../components/alerts/AlertToast';
 import { AnomalyTrendChart } from '../components/charts/AnomalyTrendChart';
 import { SpectrogramChart } from '../components/charts/SpectrogramChart';
 import { WaveformChart } from '../components/charts/WaveformChart';
-import { Sidebar, type AccountBlock } from '../components/layout/Sidebar';
+import { Sidebar, type AccountBlock, type TreeDevice } from '../components/layout/Sidebar';
+import { Modal } from '../components/ui/Modal';
+import type { RowAction } from '../components/ui/RowMenu';
 import { AssessmentCard } from '../components/monitoring/AssessmentCard';
 import { ControlBar } from '../components/monitoring/ControlBar';
 import { SettingsPanel } from '../components/monitoring/SettingsPanel';
@@ -24,7 +26,7 @@ import { useProjectWatch } from '../hooks/useProjectWatch';
 import { playAlertTone } from '../lib/alertSound';
 import { clearCredentials, credentials, saveCredentials } from '../lib/credentials';
 import { accessToken } from '../lib/supabase';
-import { timeZoneLabel } from '../lib/format';
+import { formatAgo, timeZoneLabel } from '../lib/format';
 import { assessmentView } from '../lib/sessionReducer';
 import { open, signOut } from '../lib/session';
 import type { Me } from '../types/monitoring';
@@ -34,6 +36,8 @@ function goHome(add?: 'device' | 'member') {
   if (credentials?.home) saveCredentials(credentials.home);
   location.assign(add ? `/app?add=${add}` : '/app');
 }
+
+const SEEN_KEY = 'msm:seen-alerts';
 
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -99,8 +103,11 @@ export function Dashboard() {
   const { backend } = session;
   const now = useNow(500);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [allAlerts, setAllAlerts] = useState(false);
-  const alertsRef = useRef<HTMLDivElement>(null);
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const [editing, setEditing] = useState(false); // rename / delete the workspace
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
   const [addSignal, setAddSignal] = useState(0);
   const [memberSignal, setMemberSignal] = useState(0);
   // arriving with ?add=device|member (from a listening browser's buttons) opens that pop-up once the workspace loads
@@ -111,6 +118,104 @@ export function Dashboard() {
   const [micId, setMicId] = useState<string | null>(null);
   const [sound, setSound] = useState(false);
   const canManage = watching && (watch.overview?.role === 'owner' || watch.overview?.role === 'admin') && watch.overview?.access !== 'viewer_key';
+  const isOwner = canManage && watch.overview?.role === 'owner';
+
+  // Red dot per device: an alert that started after you last opened that device (remembered in this browser).
+  const [seen, setSeen] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}') as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+  const markSeen = useCallback((ids: string[]) => {
+    setSeen((prev) => {
+      const next = { ...prev };
+      for (const id of ids) next[id] = new Date().toISOString();
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify(next));
+      } catch {
+        // private mode: dots reset on reload
+      }
+      return next;
+    });
+  }, []);
+  const deviceIds = (watch.overview?.devices ?? []).map((d) => d.id).join(',');
+  useEffect(() => {
+    // a device seen here for the first time starts with no old alerts flagged
+    const fresh = deviceIds.split(',').filter((id) => id && !seen[id]);
+    if (fresh.length) markSeen(fresh);
+  }, [deviceIds, seen, markSeen]);
+  useEffect(() => {
+    if (watch.deviceId) markSeen([watch.deviceId]);
+  }, [watch.deviceId, markSeen]);
+
+  const treeDevices: TreeDevice[] = (watch.overview?.devices ?? []).map((d) => {
+    const ago = d.last_seen_at ? now - Date.parse(d.last_seen_at) : Infinity;
+    const live = ago < 10_000;
+    const learning = !d.pending && d.learned_at === null ? d.latest?.learning : null;
+    return {
+      id: d.id,
+      name: d.name,
+      live,
+      pending: !!d.pending,
+      unseen: (watch.overview?.events ?? []).some((e) => e.device_id === d.id && e.started_at > (seen[d.id] ?? '9999')),
+      detail: d.pending
+        ? 'wants to join'
+        : learning
+          ? `learning normal sound ${learning.windows}/${learning.needed}`
+          : live
+            ? 'listening now'
+            : d.last_seen_at
+              ? `last seen ${formatAgo(ago)}`
+              : 'never connected',
+    };
+  });
+  const deviceAction = (fn: () => Promise<unknown>) => () => void fn().then(watch.reload, () => watch.reload());
+  const deviceActions = (d: TreeDevice): RowAction[] => {
+    if (!canManage || !httpClient) return [];
+    const api = httpClient.account;
+    if (d.pending) {
+      return [
+        { label: 'Approve', onClick: deviceAction(() => api.approveDevice(d.id)) },
+        { label: 'Reject', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
+      ];
+    }
+    const learned = watch.overview?.devices.find((x) => x.id === d.id)?.learned_at;
+    return [
+      ...(learned ? [{ label: 'Re-learn normal sound', onClick: deviceAction(() => api.relearnDevice(d.id)) }] : []),
+      { label: 'Remove device', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
+    ];
+  };
+  const watchedName = watch.overview?.devices.find((d) => d.id === watch.deviceId)?.name;
+  const hasActiveDevices = (watch.overview?.devices ?? []).some((d) => !d.pending);
+
+  const openAlerts = () => {
+    setAlertsOpen(true);
+    if (watch.deviceId) markSeen([watch.deviceId]);
+  };
+
+  async function renameWorkspace(e: React.FormEvent) {
+    e.preventDefault();
+    setEditError(null);
+    try {
+      const r = await httpClient!.account.renameWorkspace(editName.trim());
+      if (credentials) saveCredentials({ ...credentials, projectName: r.name });
+      location.reload();
+    } catch (err) {
+      setEditError((err as Error).message);
+    }
+  }
+  async function deleteWorkspace() {
+    setEditError(null);
+    try {
+      await httpClient!.account.deleteWorkspace();
+      clearCredentials();
+      location.assign(role === 'guest' ? '/signin' : '/workspaces');
+    } catch (err) {
+      setEditError((err as Error).message);
+    }
+  }
 
   useEffect(() => {
     if (!pendingAdd || !canManage) return;
@@ -173,6 +278,23 @@ export function Dashboard() {
         onOpen={(w) => (w.id === credentials?.projectId ? goHome() : open(w))}
         onCreate={credentials?.member ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}
+        devices={watching ? treeDevices : []}
+        selectedDeviceId={watch.deviceId}
+        onSelectDevice={(id) => {
+          watch.selectDevice(id);
+          markSeen([id]);
+        }}
+        deviceActions={deviceActions}
+        onEditWorkspace={
+          isOwner
+            ? () => {
+                setEditName(watch.overview?.name ?? '');
+                setConfirmDelete(false);
+                setEditError(null);
+                setEditing(true);
+              }
+            : undefined
+        }
       />
 
       {role === 'guest' && credentials?.expiresAt && (
@@ -196,14 +318,27 @@ export function Dashboard() {
       <main className="mx-auto grid max-w-[1280px] gap-5 px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-8">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
-            <p className="eyebrow text-ink-faint">{role === 'device' ? 'This browser is listening' : 'Live monitoring'}</p>
+            <p className="eyebrow text-ink-faint">
+              {role === 'device' ? 'This browser is listening' : watchedName ? `Live monitoring · ${watchedName}` : 'Live monitoring'}
+            </p>
             <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
               {profile ? profile.label : 'Machine monitor'}
               {profile && <span className="ml-3 align-middle text-base font-medium tracking-normal text-ink-faint">{profile.id}</span>}
             </h1>
           </div>
-          {canManage || (role === 'device' && credentials?.home) ? (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button className="min-h-10 gap-1.5 px-4" onClick={openAlerts}>
+              <Bell aria-hidden className="size-4" />
+              Alerts
+              {events.filter((e) => e.ended_at === null).length > 0 && (
+                <span className="num grid min-w-5 place-items-center rounded-md bg-anomaly px-1 text-[11px] font-semibold text-white">
+                  {events.filter((e) => e.ended_at === null).length}
+                  <span className="sr-only"> ongoing</span>
+                </span>
+              )}
+            </Button>
+          {(canManage || (role === 'device' && credentials?.home)) && (
+            <>
               <Button variant="primary" className="min-h-10 gap-1.5 px-4" onClick={() => (canManage ? setAddSignal((n) => n + 1) : goHome('device'))}>
                 <Plus aria-hidden className="size-4" />
                 Add device
@@ -214,15 +349,12 @@ export function Dashboard() {
                   Add member
                 </Button>
               )}
-            </div>
-          ) : (
-            <p className="max-w-md text-sm text-ink-muted">
-              Listens for acoustic patterns that differ from this machine's learned normal sound and raises a review alert
-              when they persist.
-            </p>
+            </>
           )}
+          </div>
         </div>
 
+        {(!watching || !hasActiveDevices) && (
         <Panel className="!p-4 sm:!p-5">
           {watching ? (
             <WatchBar
@@ -257,6 +389,7 @@ export function Dashboard() {
           />
           )}
         </Panel>
+        )}
 
         <StatusBanner
           state={state}
@@ -319,24 +452,9 @@ export function Dashboard() {
           <div className="grid min-w-0 gap-5 lg:col-span-4">
             <AssessmentCard view={view} state={state} config={backend.config} activeEvent={activeEvent} now={now} />
 
-            <div ref={alertsRef}>
-              <Panel
-                title="Alerts"
-                labelledBy="alerts-title"
-                actions={
-                  events.length > 2 ? (
-                    <Button variant="ghost" className="min-h-9 px-3 text-xs" onClick={() => setAllAlerts((a) => !a)}>
-                      {allAlerts ? 'Show fewer' : `Show all ${events.length}`}
-                    </Button>
-                  ) : undefined
-                }
-              >
-                <AlertList events={events} profiles={profiles} now={now} onAcknowledge={vm.acknowledge} limit={allAlerts ? undefined : 2} compact />
-              </Panel>
-            </div>
 
             {watching && watch.overview && (
-              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} onChanged={watch.reload} />
+              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} onChanged={watch.reload} headless />
             )}
             {(role === 'member' || role === 'guest') && watch.overview?.role && (
               <MembersCard myRole={watch.overview.role} isGuest={role === 'guest'} addSignal={memberSignal} />
@@ -355,11 +473,55 @@ export function Dashboard() {
         machineLabel={profile?.label ?? ''}
         onView={() => {
           vm.dismissNewAlert();
-          setAllAlerts(true);
-          alertsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          openAlerts();
         }}
         onDismiss={vm.dismissNewAlert}
       />
+
+      <Modal open={alertsOpen} title={watchedName ? `Alerts · ${watchedName}` : 'Alerts'} onClose={() => setAlertsOpen(false)} wide>
+        <AlertList events={events} profiles={profiles} now={now} onAcknowledge={vm.acknowledge} />
+      </Modal>
+
+      <Modal open={editing} title="Workspace" onClose={() => setEditing(false)}>
+        <form onSubmit={renameWorkspace} className="grid gap-3">
+          <label className="grid gap-1.5">
+            <span className="text-sm font-semibold">Name</span>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              minLength={2}
+              maxLength={60}
+              required
+              className="min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-sm"
+            />
+          </label>
+          <Button type="submit" variant="primary" className="min-h-11" disabled={editName.trim().length < 2 || editName.trim() === watch.overview?.name}>
+            Save name
+          </Button>
+        </form>
+        <div className="mt-5 border-t border-line pt-4">
+          {confirmDelete ? (
+            <div className="grid gap-2">
+              <p className="text-sm">
+                Delete <span className="font-semibold">{watch.overview?.name}</span> with all its devices, alert history and members? This cannot be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button className="min-h-10 flex-1" onClick={() => setConfirmDelete(false)}>
+                  Keep it
+                </Button>
+                <Button variant="danger" className="min-h-10 flex-1" onClick={() => void deleteWorkspace()}>
+                  Delete forever
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm font-semibold text-anomaly hover:underline">
+              Delete workspace…
+            </button>
+          )}
+        </div>
+        {editError && <p role="alert" className="mt-3 text-sm text-anomaly">{editError}</p>}
+      </Modal>
 
       <Drawer open={settingsOpen} title="Microphone & sound" onClose={() => setSettingsOpen(false)}>
         <SettingsPanel deviceId={micId} onDevice={setMicId} sound={sound} onSound={setSound} locked={running} />

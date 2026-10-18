@@ -184,6 +184,9 @@ class Database:
             self.delete_project(pid)
         return len(expired)
 
+    def rename_project(self, project_id: str, name: str) -> None:
+        self._q("UPDATE projects SET name = ? WHERE id = ?", (name, project_id))
+
     def delete_project(self, project_id: str) -> None:
         for table in ("audit_log", "pairing_codes", "invitations", "members", "events", "subscribers", "baselines",
                       "devices"):

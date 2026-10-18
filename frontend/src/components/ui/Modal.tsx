@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 
 /** Centred pop-up on the native <dialog> (focus trap, Esc, inert background for free). */
-export function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ open, title, onClose, children, wide = false }: { open: boolean; title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -18,10 +18,10 @@ export function Modal({ open, title, onClose, children }: { open: boolean; title
       aria-label={title}
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
-      className="m-auto w-[min(26rem,calc(100vw-2rem))] rounded-[var(--radius-card)] bg-surface p-0 text-ink shadow-2xl backdrop:bg-navy/30 backdrop:backdrop-blur-[2px]"
+      className={`m-auto ${wide ? 'w-[min(40rem,calc(100vw-2rem))]' : 'w-[min(26rem,calc(100vw-2rem))]'} rounded-[var(--radius-card)] bg-surface p-0 text-ink shadow-2xl backdrop:bg-navy/30 backdrop:backdrop-blur-[2px]`}
     >
       {open && (
-        <div className="p-5 sm:p-6">
+        <div className="max-h-[85dvh] overflow-y-auto p-5 sm:p-6">
           <header className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
             <button type="button" onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-ink">

@@ -36,6 +36,8 @@ export interface AccountApi {
   /** A paired device asks whether it has been approved yet. */
   pairStatus(projectId: string, deviceKey: string): Promise<{ status: 'pending' | 'approved' | 'rejected' | 'expired' }>;
   approveDevice(deviceId: string): Promise<unknown>;
+  renameWorkspace(name: string): Promise<{ id: string; name: string }>;
+  deleteWorkspace(): Promise<unknown>;
   relearnDevice(deviceId: string): Promise<unknown>;
   members(): Promise<{ members: Member[]; invitations: Invitation[] }>;
   invite(email: string, role: Role): Promise<{ email: string; role: Role }>;
@@ -99,6 +101,8 @@ export function createHttpClient(
     createWorkspace: (name) => json('/workspaces', body('POST', { name })),
     pair: (code, deviceName) => json('/pair', body('POST', { code, device_name: deviceName })),
     pairStatus: (projectId, deviceKey) => json('/pair/status', { headers: { 'X-Project-Id': projectId, 'X-Device-Key': deviceKey } }),
+    renameWorkspace: (name) => json(`/projects/${pid()}`, body('PATCH', { name })),
+    deleteWorkspace: () => json(`/projects/${pid()}`, body('DELETE')),
     approveDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/approve`, body('POST')),
     relearnDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/relearn`, body('POST')),
     members: () => json(`/projects/${pid()}/members`),

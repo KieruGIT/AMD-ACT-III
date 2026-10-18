@@ -1,14 +1,25 @@
-import { ChevronUp, Menu, Plus, Waves, X } from 'lucide-react';
+import { ChevronUp, Menu, Pencil, Plus, Waves, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Workspace } from '../../types/monitoring';
 import { Logo } from '../brand/Logo';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/primitives';
+import { RowMenu, type RowAction } from '../ui/RowMenu';
 
 export interface AccountBlock {
   title: string; // e-mail, device name, "Guest"...
   subtitle: ReactNode; // role, countdown...
   actions: { label: string; onClick: () => void }[];
+}
+
+/** A listening device shown under its workspace in the sidebar tree. */
+export interface TreeDevice {
+  id: string;
+  name: string;
+  live: boolean; // listening now
+  pending: boolean; // asked to join, waiting for approval
+  unseen: boolean; // a new alert since it was last opened (red dot)
+  detail: string; // "listening now", "last seen 3 min ago", "wants to join"...
 }
 
 /** Workspaces listed like projects (one click opens one), with your account at the bottom. Slides in on phones. */
@@ -21,6 +32,11 @@ export function Sidebar({
   account,
   demo = false,
   hasWorkspace = false,
+  devices = [],
+  selectedDeviceId = null,
+  onSelectDevice,
+  deviceActions,
+  onEditWorkspace,
 }: {
   workspaces: Workspace[] | null; // null: this browser is not signed in (guest, device, demo): just the current one
   currentId: string | null;
@@ -30,6 +46,11 @@ export function Sidebar({
   account: AccountBlock | null;
   demo?: boolean; // this is the /demo console
   hasWorkspace?: boolean; // this browser has a workspace to go back to
+  devices?: TreeDevice[]; // the current workspace's devices, nested under it
+  selectedDeviceId?: string | null;
+  onSelectDevice?: (id: string) => void;
+  deviceActions?: (d: TreeDevice) => RowAction[];
+  onEditWorkspace?: () => void; // pencil at the end of the current workspace
 }) {
   const [open, setOpen] = useState(false); // phones
   const [creating, setCreating] = useState(false);
@@ -85,19 +106,69 @@ export function Sidebar({
                   ? `${w.devices} device${w.devices === 1 ? '' : 's'}`
                   : null;
           return (
-            <button
-              key={w.id}
-              type="button"
-              aria-current={current ? 'page' : undefined}
-              onClick={() => (current ? setOpen(false) : onOpen(w))}
-              className={`flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-left ${current ? 'bg-surface shadow-sm ring-1 ring-line' : 'hover:bg-surface-muted'}`}
-            >
-              <span aria-hidden className={`size-2 shrink-0 rounded-full ${tone}`} />
-              <span className="min-w-0 flex-1">
-                <span className={`block truncate text-sm ${current ? 'font-semibold' : 'font-medium'}`}>{w.name}</span>
-                {status && <span className="block truncate text-[11px] text-ink-faint">{status}</span>}
-              </span>
-            </button>
+            <div key={w.id}>
+              <div className={`group flex items-center rounded-xl ${current ? 'bg-surface shadow-sm ring-1 ring-line' : 'hover:bg-surface-muted'}`}>
+                <button
+                  type="button"
+                  aria-current={current ? 'page' : undefined}
+                  onClick={() => (current ? setOpen(false) : onOpen(w))}
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 px-2.5 text-left"
+                >
+                  <span aria-hidden className={`size-2 shrink-0 rounded-full ${tone}`} />
+                  <span className="min-w-0 flex-1">
+                    <span className={`block truncate text-sm ${current ? 'font-semibold' : 'font-medium'}`}>{w.name}</span>
+                    {status && !current && <span className="block truncate text-[11px] text-ink-faint">{status}</span>}
+                  </span>
+                </button>
+                {current && onEditWorkspace && (
+                  <button
+                    type="button"
+                    aria-label={`Rename or delete ${w.name}`}
+                    onClick={onEditWorkspace}
+                    className="mr-1.5 grid size-8 shrink-0 place-items-center rounded-lg text-ink-faint hover:bg-surface-muted hover:text-ink"
+                  >
+                    <Pencil aria-hidden className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Its devices, nested like files in a folder */}
+              {current && (
+                <ul aria-label={`Devices in ${w.name}`} className="mt-1 mb-2 ml-4 grid gap-0.5 border-l border-line pl-2">
+                  {devices.length === 0 && <li className="px-2 py-1.5 text-xs text-ink-faint">No devices yet</li>}
+                  {devices.map((d) => {
+                    const selected = d.id === selectedDeviceId;
+                    const actions = deviceActions?.(d) ?? [];
+                    return (
+                      <li key={d.id} className={`flex items-center rounded-lg ${selected ? 'bg-teal-soft/70' : 'hover:bg-surface-muted'}`}>
+                        <button
+                          type="button"
+                          aria-current={selected ? 'true' : undefined}
+                          disabled={d.pending}
+                          onClick={() => {
+                            onSelectDevice?.(d.id);
+                            setOpen(false);
+                          }}
+                          className="flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2 text-left disabled:cursor-default"
+                        >
+                          <span aria-hidden className={`size-1.5 shrink-0 rounded-full ${d.pending ? 'bg-warning' : d.live ? 'bg-normal' : 'bg-line-strong'}`} />
+                          <span className="min-w-0 flex-1 leading-tight">
+                            <span className={`block truncate text-[13px] ${selected ? 'font-semibold' : 'font-medium'}`}>{d.name}</span>
+                            <span className="block truncate text-[11px] text-ink-faint">{d.detail}</span>
+                          </span>
+                          {d.unseen && (
+                            <span className="size-2 shrink-0 rounded-full bg-anomaly">
+                              <span className="sr-only">new alert</span>
+                            </span>
+                          )}
+                        </button>
+                        {actions.length > 0 && <RowMenu label={`More for ${d.name}`} actions={actions} />}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           );
         })}
       </nav>

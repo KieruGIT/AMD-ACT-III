@@ -61,6 +61,30 @@ def create_workspace(body: NewWorkspace, request: Request, authorization: str | 
     return {"id": pid, "name": body.name.strip(), "role": "owner"}
 
 
+class Rename(BaseModel):
+    name: str = Field(min_length=2, max_length=60)
+
+
+@router.patch("/projects/{project_id}")
+def rename_workspace(project_id: str, body: Rename, request: Request, authorization: str | None = Header(None),
+                     x_guest_key: str | None = Header(None)):
+    p = _caller(request, project_id, "owner", authorization, x_guest_key)
+    db = request.app.state.db
+    old = db.project(project_id)["name"]
+    db.rename_project(project_id, body.name.strip())
+    db.audit(project_id, p.actor, "workspace.renamed", f"{old} → {body.name.strip()}")
+    return {"id": project_id, "name": body.name.strip()}
+
+
+@router.delete("/projects/{project_id}")
+def delete_workspace(project_id: str, request: Request, authorization: str | None = Header(None),
+                     x_guest_key: str | None = Header(None)):
+    """Deletes the workspace with its devices, alert history, members and log. Owners only; cannot be undone."""
+    _caller(request, project_id, "owner", authorization, x_guest_key)
+    request.app.state.db.delete_project(project_id)
+    return {"ok": True}
+
+
 # --- members & invitations ----------------------------------------------------------------------------
 @router.get("/projects/{project_id}/members")
 def list_members(project_id: str, request: Request, authorization: str | None = Header(None),

@@ -35,5 +35,6 @@ test('listening with this browser keeps the workspace: Add device still works', 
 
   await page.getByRole('button', { name: 'Add device' }).click(); // back to managing, pop-up open
   await expect(page.getByRole('dialog', { name: 'Add a device' }).getByLabel(/Pairing code/)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Devices' }).getByText('This browser')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('list', { name: /^Devices in / }).getByText('This browser')).toBeVisible();
 });

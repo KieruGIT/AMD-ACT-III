@@ -22,12 +22,14 @@ export function DevicesCard({
   canManage,
   addSignal,
   onChanged,
+  headless = false,
 }: {
   overview: ProjectOverview;
   profiles: MachineProfile[];
   canManage: boolean;
   addSignal: number; // bumped by the monitor's "Add a device" button
   onChanged: () => void;
+  headless?: boolean; // only the pop-ups (add + approve); the device list is in the sidebar
 }) {
   const [code, setCode] = useState<PairingCode | null>(null);
   const [codeAt, setCodeAt] = useState(0);
@@ -124,6 +126,7 @@ export function DevicesCard({
 
   return (
     <div>
+      {!headless && (
       <Panel
         title="Devices"
         labelledBy="devices-title"
@@ -199,6 +202,7 @@ export function DevicesCard({
         )}
         <FormError>{error}</FormError>
       </Panel>
+      )}
 
       <Modal open={adding} title="Add a device" onClose={closeAdd}>
         {approvedName ? (

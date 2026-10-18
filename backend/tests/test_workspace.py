@@ -201,3 +201,16 @@ def test_sidebar_summary_counts_devices_listening_and_open_alerts(c):
     assert (w["devices"], w["listening"], w["open_alerts"], w["members"]) == (1, 0, 0, 1)
     c.app.state.db.touch_device(paired["device_id"])
     assert c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]["listening"] == 1
+
+
+def test_owners_rename_and_delete_a_workspace(c):
+    pid = workspace_of(c)
+    c.post(f"/api/v1/projects/{pid}/invitations", json={"email": "bob@example.com", "role": "admin"}, headers=as_("t-alice"))
+    c.get("/api/v1/me", headers=as_("t-bob"))
+    assert c.patch(f"/api/v1/projects/{pid}", json={"name": "Plant B"}, headers=as_("t-bob")).status_code == 403  # editors can't
+    assert c.patch(f"/api/v1/projects/{pid}", json={"name": "Plant B"}, headers=as_("t-alice")).json()["name"] == "Plant B"
+    assert c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"][0]["name"] == "Plant B"
+    assert c.delete(f"/api/v1/projects/{pid}", headers=as_("t-bob")).status_code == 403
+    assert c.delete(f"/api/v1/projects/{pid}", headers=as_("t-alice")).status_code == 200
+    assert c.get("/api/v1/me", headers=as_("t-alice")).json()["workspaces"] == []
+    assert c.get("/api/v1/me", headers=as_("t-bob")).json()["workspaces"] == []
