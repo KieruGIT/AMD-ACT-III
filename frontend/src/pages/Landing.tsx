@@ -169,7 +169,7 @@ export function Landing() {
                 Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
-              <CTA href="#how" variant="secondary">How it works</CTA>
+              <CTA href="/workspaces?guest" variant="secondary">Try as guest</CTA>
             </div>
           </div>
           <div className="h-[480px] sm:h-[560px] lg:h-auto">

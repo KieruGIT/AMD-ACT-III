@@ -1,4 +1,4 @@
-import { ChevronUp, Menu, Pencil, Plus, Waves, X } from 'lucide-react';
+import { ChevronUp, Menu, Pencil, Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Workspace } from '../../types/monitoring';
 import { Logo } from '../brand/Logo';
@@ -31,8 +31,6 @@ export function Sidebar({
   onCreate,
   account,
   demo = false,
-  hasWorkspace = false,
-  showDemo = true,
   devices = [],
   selectedDeviceId = null,
   onSelectDevice,
@@ -40,7 +38,6 @@ export function Sidebar({
   onEditWorkspace,
   onEditDevice,
 }: {
-  showDemo?: boolean; // guests already have a real workspace to try, so no Demo link
   workspaces: Workspace[] | null; // null: this browser is not signed in (guest, device, demo): just the current one
   currentId: string | null;
   currentName: string;
@@ -48,7 +45,6 @@ export function Sidebar({
   onCreate?: (name: string) => Promise<void>;
   account: AccountBlock | null;
   demo?: boolean; // this is the /demo console
-  hasWorkspace?: boolean; // this browser has a workspace to go back to
   devices?: TreeDevice[]; // the current workspace's devices, nested under it
   selectedDeviceId?: string | null;
   onSelectDevice?: (id: string) => void;
@@ -187,21 +183,6 @@ export function Sidebar({
         })}
       </nav>
 
-      {showDemo && (
-      <div className="mt-4 px-2">
-        <a
-          href={demo ? (hasWorkspace ? '/app' : '/signin') : '/demo'}
-          aria-current={demo ? 'page' : undefined}
-          className={`flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-sm ${demo ? 'bg-surface font-semibold shadow-sm ring-1 ring-line' : 'font-medium text-ink-muted hover:bg-surface-muted hover:text-ink'}`}
-        >
-          <Waves aria-hidden className="size-4 shrink-0 text-teal" />
-          <span className="min-w-0 flex-1 leading-tight">
-            Demo
-            <span className="block text-[11px] font-normal text-ink-faint">{demo ? (hasWorkspace ? 'Back to your workspace' : 'Sign in or continue as guest') : 'Simulated audio, no setup'}</span>
-          </span>
-        </a>
-      </div>
-      )}
 
       {account && <AccountMenu account={account} />}
 

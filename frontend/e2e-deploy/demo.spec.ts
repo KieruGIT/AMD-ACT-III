@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
 
-// The demo works on the live site with no account, pairing or backend: simulated audio and scenarios in the browser.
-test('anyone can open the simulated demo at /demo', async ({ page }) => {
+test('Try as guest on the landing page, and the old /demo link, go straight into a guest workspace', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Try as guest' }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByText('Nothing is kept')).toBeVisible();
   await page.goto('/demo');
-  await page.getByRole('button', { name: 'Start monitoring' }).click();
-  await expect(page.getByTestId('assessment')).toHaveText(/Normal/, { timeout: 10_000 });
-  await page.getByLabel('Simulation scenario').selectOption('anomaly');
-  await expect(page.getByRole('alert').filter({ hasText: 'Persistent acoustic anomaly' })).toBeVisible({ timeout: 12_000 });
+  await expect(page).toHaveURL(/\/app$/);
 });
 
 test('a guest starts in an empty workspace named Workspace, with the sidebar and no Demo link', async ({ page }) => {

@@ -315,8 +315,6 @@ export function Dashboard() {
         currentId={credentials?.projectId ?? null}
         currentName={credentials?.projectName ?? watch.overview?.name ?? 'Workspace'}
         demo={isDemo}
-        showDemo={isDemo || !(credentials?.guestKey || credentials?.home?.guestKey)}
-        hasWorkspace={!!credentials}
         onOpen={(w) => {
           if (w.id === credentials?.projectId) return goHome();
           const g = guestWorkspaces().find((x) => x.projectId === w.id);
