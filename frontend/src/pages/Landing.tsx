@@ -169,7 +169,7 @@ export function Landing() {
                 Get started
                 <ArrowRight aria-hidden className="size-4" />
               </CTA>
-              <CTA href="/demo" variant="secondary">Try the demo · simulated audio</CTA>
+              <CTA href="#how" variant="secondary">How it works</CTA>
             </div>
           </div>
           <div className="h-[480px] sm:h-[560px] lg:h-auto">
@@ -389,7 +389,7 @@ export function Landing() {
                 See a sustained anomaly raise exactly one alert.
               </h2>
               <p className="mt-4 max-w-lg text-teal-soft">
-                The console runs in your browser. Use demo audio, switch scenarios and watch a single spike get ignored.
+                The console runs in your browser. Use your computer's microphone and watch a single spike get ignored.
               </p>
             </div>
             <div className="relative flex flex-wrap gap-3">
