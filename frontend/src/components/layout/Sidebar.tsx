@@ -1,4 +1,4 @@
-import { ChevronUp, Menu, Plus, X } from 'lucide-react';
+import { ChevronUp, Menu, Plus, Waves, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Workspace } from '../../types/monitoring';
 import { Logo } from '../brand/Logo';
@@ -17,6 +17,8 @@ export function Sidebar({
   onOpen,
   onCreate,
   account,
+  demo = false,
+  hasWorkspace = false,
 }: {
   workspaces: Workspace[] | null; // null: this browser is not signed in (guest, device, demo): just the current one
   currentId: string | null;
@@ -24,6 +26,8 @@ export function Sidebar({
   onOpen: (w: Workspace) => void;
   onCreate?: (name: string) => Promise<void>;
   account: AccountBlock | null;
+  demo?: boolean; // this is the /demo console
+  hasWorkspace?: boolean; // this browser has a workspace to go back to
 }) {
   const [open, setOpen] = useState(false); // phones
   const [creating, setCreating] = useState(false);
@@ -31,7 +35,7 @@ export function Sidebar({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const list: Workspace[] = workspaces ?? (currentId ? [{ id: currentId, name: currentName, role: 'owner' }] : []);
+  const list: Workspace[] = workspaces ?? (currentId && !demo ? [{ id: currentId, name: currentName, role: 'owner' }] : []);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +116,20 @@ export function Sidebar({
           );
         })}
       </nav>
+
+      <div className="mt-4 px-2">
+        <a
+          href={demo ? (hasWorkspace ? '/app' : '/signin') : '/demo'}
+          aria-current={demo ? 'page' : undefined}
+          className={`flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-sm ${demo ? 'bg-surface font-semibold shadow-sm ring-1 ring-line' : 'font-medium text-ink-muted hover:bg-surface-muted hover:text-ink'}`}
+        >
+          <Waves aria-hidden className="size-4 shrink-0 text-teal" />
+          <span className="min-w-0 flex-1 leading-tight">
+            Demo
+            <span className="block text-[11px] font-normal text-ink-faint">{demo ? (hasWorkspace ? 'Back to your workspace' : 'Sign in or continue as guest') : 'Simulated audio, no setup'}</span>
+          </span>
+        </a>
+      </div>
 
       {account && <AccountMenu account={account} />}
     </div>

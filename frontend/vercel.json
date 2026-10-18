@@ -4,6 +4,7 @@
     { "source": "/app", "destination": "/index.html" },
     { "source": "/signin", "destination": "/index.html" },
     { "source": "/workspaces", "destination": "/index.html" },
-    { "source": "/pair", "destination": "/index.html" }
+    { "source": "/pair", "destination": "/index.html" },
+    { "source": "/demo", "destination": "/index.html" }
   ]
 }

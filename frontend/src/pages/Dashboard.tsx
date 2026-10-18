@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { accounts, client, httpClient, role } from '../api';
+import { accounts, client, httpClient, isDemo, role } from '../api';
 import type { SourceKind } from '../audio/sources';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertToast } from '../components/alerts/AlertToast';
@@ -78,7 +78,7 @@ function accountBlock(me: Me | null, emailAlerts: boolean | undefined, toggleEma
     case 'viewer':
       return { title: 'View-only link', subtitle: 'Watching', actions: [settings, { label: 'Sign in', onClick: () => location.assign('/signin') }] };
     default:
-      return { title: 'Demo', subtitle: 'Simulated backend', actions: [settings] };
+      return { title: 'Demo', subtitle: 'Simulated audio · nothing is sent', actions: [settings, { label: 'Sign in', onClick: () => location.assign('/signin') }] };
   }
 }
 
@@ -150,8 +150,10 @@ export function Dashboard() {
     <div className="min-h-dvh lg:pl-64">
       <Sidebar
         workspaces={role === 'member' ? (me?.workspaces ?? null) : null}
-        currentId={credentials?.projectId ?? (role === 'mock' ? 'demo' : null)}
-        currentName={credentials?.projectName ?? watch.overview?.name ?? (role === 'mock' ? 'Demo workspace' : 'Workspace')}
+        currentId={isDemo ? null : (credentials?.projectId ?? null)}
+        currentName={isDemo ? 'Demo' : (credentials?.projectName ?? watch.overview?.name ?? 'Workspace')}
+        demo={isDemo}
+        hasWorkspace={!!credentials}
         onOpen={(w) => open(w)}
         onCreate={role === 'member' ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}

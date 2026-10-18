@@ -3,7 +3,9 @@ import { accessToken } from '../lib/supabase';
 import { createHttpClient, type HttpClient } from './monitoringClient';
 import { createMockClient, type MockClient } from './mockMonitoringClient';
 
-export const isMockMode = import.meta.env.VITE_MOCK_API !== 'false';
+/** /demo always runs the simulated console in the browser (demo audio + scenarios), no account or backend needed. */
+export const isDemo = location.pathname.startsWith('/demo');
+export const isMockMode = isDemo || import.meta.env.VITE_MOCK_API !== 'false';
 
 export const client: HttpClient | MockClient = isMockMode
   ? createMockClient()
