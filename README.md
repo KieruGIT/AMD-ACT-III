@@ -5,7 +5,7 @@ audio windows to an analysis API; the API scores them against the machine's lear
 when unusual sound persists, notifies the registered people, and every dashboard sees it live. Experimental, not a
 certified safety or diagnostic system.
 
-Pitch video (2:06, problem → solution → how it works → live demo → how it was built): [`media/pitch-video-2min.mp4`](media/pitch-video-2min.mp4). Pitch ad (0:28): [`media/pitch-ad.mp4`](media/pitch-ad.mp4). Original long cut (2:38): [`media/pitch-video.mp4`](media/pitch-video.mp4).
+Pitch video (2:06, problem → solution → how it works → live demo → how it was built): [`media/pitch-video-2min.mp4`](media/pitch-video-2min.mp4). Pitch ad (0:28): [`media/pitch-ad.mp4`](media/pitch-ad.mp4). Original long cut (2:38): [`media/pitch-video.mp4`](media/pitch-video.mp4). Slides: [`media/pitch-deck.pdf`](media/pitch-deck.pdf). Cover image: [`media/cover.png`](media/cover.png).
 
 Plan and design brief: [`docs/`](docs/). Visual references: [`reference-images/`](reference-images/).
 
