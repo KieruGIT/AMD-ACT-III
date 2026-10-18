@@ -11,24 +11,19 @@ test('anyone can try the demo from the landing page', async ({ page }) => {
   await expect(page.getByRole('alert').filter({ hasText: 'Persistent acoustic anomaly' })).toBeVisible({ timeout: 12_000 });
 });
 
-test('a guest starts empty, names workspaces like folders, and sees no Demo link', async ({ page }) => {
+test('a guest starts in an empty workspace named Workspace, with the sidebar and no Demo link', async ({ page }) => {
   await page.goto('/signin');
   await page.getByRole('button', { name: 'Continue as guest' }).click();
-  await expect(page.getByText('No workspaces yet.')).toBeVisible();
-  await page.getByLabel('New workspace').fill('Workshop');
-  await page.getByRole('button', { name: 'Create workspace' }).click();
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('button', { name: 'Add device' })).toBeVisible();
   await expect(page.getByText('Nothing is kept')).toBeVisible();
   await expect(page.getByRole('link', { name: /^Demo/ })).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Workshop', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Workspaces' }).getByRole('button', { name: 'Workspace', exact: true })).toBeVisible();
 });
 
 test('using this computer microphone keeps the workspace: Add device still works', async ({ page }) => {
   await page.goto('/signin');
   await page.getByRole('button', { name: 'Continue as guest' }).click();
-  await page.getByLabel('New workspace').fill('Guest workspace');
-  await page.getByRole('button', { name: 'Create workspace' }).click();
   await page.getByRole('button', { name: 'Add device' }).click();
   await page.getByRole('dialog', { name: 'Add a device' }).getByRole('button', { name: "Use this computer's microphone" }).click();
   await expect(page.getByText("Using this computer's microphone")).toBeVisible();

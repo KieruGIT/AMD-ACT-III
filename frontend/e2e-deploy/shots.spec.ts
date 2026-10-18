@@ -9,8 +9,6 @@ test('capture account screens', async ({ page }) => {
   await page.goto('/signin');
   await page.screenshot({ path: `${dir}/signin.png` });
   await page.getByRole('button', { name: 'Continue as guest' }).click();
-  await page.getByLabel('New workspace').fill('Guest workspace');
-  await page.getByRole('button', { name: 'Create workspace' }).click();
   await page.waitForURL(/\/app$/);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${dir}/console-guest.png` });

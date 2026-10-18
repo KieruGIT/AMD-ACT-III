@@ -7,8 +7,6 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await admin.goto('/app');
   await expect(admin).toHaveURL(/\/signin$/); // no workspace yet → sign in
   await admin.getByRole('button', { name: 'Continue as guest' }).click();
-  await admin.getByLabel('New workspace').fill('Guest workspace');
-  await admin.getByRole('button', { name: 'Create workspace' }).click();
   await expect(admin).toHaveURL(/\/app$/);
   await expect(admin.getByText('Nothing is kept')).toBeVisible();
   await expect(admin.getByTestId('guest-countdown')).toHaveText(/^1:59:\d\d$/); // live countdown to deletion
