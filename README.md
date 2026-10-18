@@ -5,7 +5,7 @@ audio windows to an analysis API; the API scores them against the machine's lear
 when unusual sound persists, notifies the registered people, and every dashboard sees it live. Experimental, not a
 certified safety or diagnostic system.
 
-Pitch video (2:38, live product on a real fan recording): [`media/pitch-video.mp4`](media/pitch-video.mp4).
+Pitch ad (0:28, fast cut): [`media/pitch-ad.mp4`](media/pitch-ad.mp4). Full pitch video (2:38, live product on a real fan recording): [`media/pitch-video.mp4`](media/pitch-video.mp4).
 
 Plan and design brief: [`docs/`](docs/). Visual references: [`reference-images/`](reference-images/).
 
