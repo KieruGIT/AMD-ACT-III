@@ -4,6 +4,7 @@ import { httpClient } from '../../api';
 import { supabase } from '../../lib/supabase';
 import type { AuditEntry, Invitation, Member, Role } from '../../types/monitoring';
 import { FormError, Notice } from '../auth/AuthShell';
+import { Modal } from '../ui/Modal';
 import { Button, Panel } from '../ui/primitives';
 import { RowMenu, type RowAction } from '../ui/RowMenu';
 
@@ -124,63 +125,9 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
       }
     >
       {isGuest ? (
-        adding ? (
-          <div className="grid gap-2 rounded-2xl bg-surface-muted p-4 text-sm">
-            <p className="font-semibold">Create an account to invite people</p>
-            <p className="text-ink-muted">Members are invited by e-mail and get alert e-mails, so they need a workspace that belongs to an account.</p>
-            <span className="flex gap-2">
-              <a href="/signin" className="inline-flex min-h-9 items-center rounded-full bg-teal px-4 text-xs font-semibold text-white hover:bg-teal-strong">
-                Create an account
-              </a>
-              <Button variant="ghost" className="min-h-9 px-3 text-xs" onClick={() => setAdding(false)}>
-                Not now
-              </Button>
-            </span>
-          </div>
-        ) : (
-          <p className="text-sm text-ink-muted">Guest workspaces are private to this browser and send no e-mails.</p>
-        )
+        <p className="text-sm text-ink-muted">Guest workspaces are private to this browser and send no e-mails.</p>
       ) : (
         <>
-          {adding && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const to = email.trim();
-                void act(async () => {
-                  await api.invite(to, role);
-                  setEmail('');
-                  setAdding(false);
-                }, `Invitation sent to ${to}.`);
-              }}
-              className="mb-3 flex flex-wrap gap-2"
-            >
-              <input
-                type="email"
-                required
-                autoFocus
-                placeholder="name@company.com"
-                aria-label="E-mail address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="min-h-10 min-w-0 flex-1 basis-40 rounded-xl border border-line-strong bg-surface px-3 text-sm"
-              />
-              <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)} className="min-h-10 rounded-xl border border-line-strong bg-surface px-2 text-sm">
-                {grantable.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </select>
-              <Button type="submit" variant="primary" className="min-h-10 px-4" disabled={busy}>
-                Add
-              </Button>
-              <Button variant="ghost" className="min-h-10 px-3" onClick={() => setAdding(false)}>
-                Cancel
-              </Button>
-            </form>
-          )}
-
           <ul className="grid gap-1">
             {members.map((m) => (
               <li key={m.user_id} className="flex items-center gap-3 py-1.5">
@@ -247,6 +194,56 @@ export function MembersCard({ myRole, isGuest }: { myRole: Role; isGuest: boolea
           </ul>
         </div>
       )}
+      <Modal open={adding} title="Add a member" onClose={() => setAdding(false)}>
+        {isGuest ? (
+          <div className="grid gap-3 text-sm">
+            <p className="font-semibold">Create an account to invite people</p>
+            <p className="text-ink-muted">Members are invited by e-mail and get alert e-mails, so they need a workspace that belongs to an account.</p>
+            <a href="/signin" className="inline-flex min-h-11 items-center justify-center rounded-full bg-teal px-4 text-sm font-semibold text-white hover:bg-teal-strong">
+              Create an account
+            </a>
+          </div>
+        ) : (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const to = email.trim();
+                void act(async () => {
+                  await api.invite(to, role);
+                  setEmail('');
+                  setAdding(false);
+                }, `Invitation sent to ${to}.`);
+              }}
+              className="grid gap-3"
+            >
+              <input
+                type="email"
+                required
+                autoFocus
+                placeholder="name@company.com"
+                aria-label="E-mail address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-sm"
+              />
+              <select aria-label="Role" value={role} onChange={(e) => setRole(e.target.value as Role)} className="min-h-11 rounded-xl border border-line-strong bg-surface px-2 text-sm">
+                {grantable.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-ink-faint">
+                They get an invitation e-mail, join when they sign in with that address, and then get alert e-mails too.
+                Can view: watch and acknowledge alerts. Can edit: also add or remove devices and members.
+              </p>
+              <Button type="submit" variant="primary" className="min-h-11" disabled={busy}>
+                {busy ? 'Adding…' : 'Add member'}
+              </Button>
+            </form>
+                  )}
+        <FormError>{error}</FormError>
+      </Modal>
     </Panel>
   );
 }

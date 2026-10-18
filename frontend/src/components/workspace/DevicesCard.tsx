@@ -1,11 +1,12 @@
 import { Plus, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { accounts, httpClient } from '../../api';
 import { saveCredentials } from '../../lib/credentials';
 import { formatAgo } from '../../lib/format';
 import type { DeviceSummary, MachineProfile, PairingCode, ProjectOverview } from '../../types/monitoring';
 import { FormError, go } from '../auth/AuthShell';
+import { Modal } from '../ui/Modal';
 import { Button, Panel } from '../ui/primitives';
 import { RowMenu } from '../ui/RowMenu';
 
@@ -35,7 +36,8 @@ export function DevicesCard({
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
   const [now, setNow] = useState(() => Date.now());
-  const ref = useRef<HTMLDivElement>(null);
+  const [adding, setAdding] = useState(false); // the "Add a device" pop-up
+  const [approvedName, setApprovedName] = useState<string | null>(null);
   const machine = profiles[0]?.id ?? 'fan_01';
 
   const pending = overview.devices.filter((d) => d.pending);
@@ -43,9 +45,8 @@ export function DevicesCard({
     .filter((d) => !d.pending)
     .sort((a, b) => Number(isLive(b, now)) - Number(isLive(a, now)) || a.name.localeCompare(b.name));
   const left = code ? Date.parse(code.expires_at) - now : 0;
-  // the code was used: a device asked to join after it was created
-  const codeUsed = !!code && overview.devices.some((d) => Date.parse(d.created_at ?? '') >= codeAt - 2000);
-  const showCode = !!code && left > 0 && !codeUsed;
+  // the device that used this code (it asked to join after the code was made)
+  const joiner = code ? pending.find((d) => Date.parse(d.created_at ?? '') >= codeAt - 2000) : undefined;
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -79,6 +80,8 @@ export function DevicesCard({
 
   const add = () =>
     run('add', async () => {
+      setAdding(true);
+      setApprovedName(null);
       setQr(null);
       setCodeAt(Date.now());
       setCode(await httpClient!.account.pairingCode(nextName(), machine));
@@ -99,26 +102,31 @@ export function DevicesCard({
       await fn();
       onChanged();
     });
-  const approve = (d: DeviceSummary) => act(`approve:${d.id}`, () => httpClient!.account.approveDevice(d.id).then(() => setCode(null)));
+  const approve = (d: DeviceSummary) =>
+    act(`approve:${d.id}`, () => httpClient!.account.approveDevice(d.id).then(() => d.id === joiner?.id && setApprovedName(d.name)));
+  const closeAdd = () => {
+    setAdding(false);
+    setCode(null);
+    setApprovedName(null);
+  };
   const reject = (d: DeviceSummary) => act(`reject:${d.id}`, () => httpClient!.account.revokeDevice(d.id));
 
-  // The monitor's "Add a device" button lands here with a code already showing.
+  // The monitor's "Add a device" button opens the same pop-up.
   useEffect(() => {
     if (!addSignal || !canManage) return;
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     void add();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per click
   }, [addSignal]);
 
-  const popup = canManage ? pending.find((d) => !dismissed.has(d.id)) : undefined;
+  const popup = canManage && !adding ? pending.find((d) => !dismissed.has(d.id)) : undefined;
 
   return (
-    <div ref={ref}>
+    <div>
       <Panel
         title="Devices"
         labelledBy="devices-title"
         actions={
-          canManage && !showCode ? (
+          canManage ? (
             <Button variant="ghost" className="min-h-9 gap-1 px-3 text-xs" disabled={busy !== null} onClick={() => void add()}>
               <Plus aria-hidden className="size-3.5" />
               {busy === 'add' ? 'Creating…' : 'Add'}
@@ -126,28 +134,6 @@ export function DevicesCard({
           ) : undefined
         }
       >
-        {showCode && code && (
-          <div className="mb-4 grid justify-items-center gap-2 rounded-2xl bg-surface-muted p-4 text-center">
-            {qr && <img src={qr} alt={`QR code to pair ${code.device_name}`} className="size-40 rounded-xl border border-line bg-white" />}
-            <p className="num text-2xl font-semibold tracking-[0.16em]" aria-label={`Pairing code ${code.code.split('').join(' ')}`}>
-              {code.code}
-            </p>
-            <p className="text-xs text-ink-muted">
-              Scan on the phone or sensor, or open <span className="font-semibold text-ink">{location.host}/pair</span> and type the code. You
-              approve it here when it asks to join.
-            </p>
-            <p className="num text-[11px] text-ink-faint">
-              Expires in {Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, '0')} · works once
-            </p>
-            <button type="button" onClick={() => void listenHere()} disabled={busy !== null} className="text-xs font-semibold text-teal hover:underline">
-              {busy === 'self' ? 'Pairing…' : 'Or listen with this browser'}
-            </button>
-            <button type="button" onClick={() => setCode(null)} className="text-xs text-ink-faint hover:text-ink">
-              Cancel
-            </button>
-          </div>
-        )}
-
         {pending.length > 0 && (
           <ul className="mb-3 grid gap-2" aria-label="Waiting for approval">
             {pending.map((d) => (
@@ -211,6 +197,61 @@ export function DevicesCard({
         )}
         <FormError>{error}</FormError>
       </Panel>
+
+      <Modal open={adding} title="Add a device" onClose={closeAdd}>
+        {approvedName ? (
+          <div className="grid justify-items-center gap-3 py-2 text-center">
+            <p role="status" className="text-base font-semibold text-normal">{approvedName} is added</p>
+            <p className="text-sm text-ink-muted">It starts listening now. During its first minute it learns the machine's normal sound.</p>
+            <Button variant="primary" className="min-h-10 px-6" onClick={closeAdd}>
+              Done
+            </Button>
+          </div>
+        ) : joiner ? (
+          <div className="grid gap-3 text-center">
+            <p className="text-sm text-ink-muted">This device used the code and asks to join:</p>
+            <p className="flex items-center justify-center gap-2 text-lg font-semibold">
+              <Smartphone aria-hidden className="size-5 text-teal" />
+              {joiner.name}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="ghost" className="min-h-11 flex-1" disabled={busy !== null} onClick={() => void reject(joiner).then(closeAdd)}>
+                Reject
+              </Button>
+              <Button variant="primary" className="min-h-11 flex-1" disabled={busy !== null} onClick={() => void approve(joiner)}>
+                Approve
+              </Button>
+            </div>
+          </div>
+        ) : code && left > 0 ? (
+          <div className="grid justify-items-center gap-2 text-center">
+            {qr && <img src={qr} alt={`QR code to pair ${code.device_name}`} className="size-48 rounded-xl border border-line bg-white" />}
+            <p className="num text-3xl font-semibold tracking-[0.16em]" aria-label={`Pairing code ${code.code.split('').join(' ')}`}>
+              {code.code}
+            </p>
+            <p className="text-sm text-ink-muted">
+              Scan with the phone or sensor, or open <span className="font-semibold text-ink">{location.host}/pair</span> and type the code. When
+              it asks to join, you approve it right here.
+            </p>
+            <p className="num text-xs text-ink-faint">
+              Expires in {Math.floor(left / 60000)}:{String(Math.floor((left % 60000) / 1000)).padStart(2, '0')} · works once
+            </p>
+            <button type="button" onClick={() => void listenHere()} disabled={busy !== null} className="mt-1 text-sm font-semibold text-teal hover:underline">
+              {busy === 'self' ? 'Pairing…' : 'Or listen with this browser'}
+            </button>
+          </div>
+        ) : code ? (
+          <div className="grid justify-items-center gap-3 text-center">
+            <p className="text-sm text-ink-muted">This code expired.</p>
+            <Button variant="primary" className="min-h-10 px-6" onClick={() => void add()}>
+              New code
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-ink-faint">{busy === 'add' ? 'Creating a code…' : ''}</p>
+        )}
+        <FormError>{error}</FormError>
+      </Modal>
 
       {/* Pop-up for a new device asking to join, wherever the admin is on the page */}
       {popup && (

@@ -11,9 +11,9 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await expect(admin.getByText('Nothing is kept')).toBeVisible();
   await expect(admin.getByTestId('guest-countdown')).toHaveText(/^1:59:\d\d$/); // live countdown to deletion
 
-  // One click: the code and QR appear right in the Devices card.
+  // One click: a pop-up with the code and QR.
   await admin.getByRole('button', { name: 'Add a device' }).click();
-  const add = admin.getByRole('region', { name: 'Devices' });
+  const add = admin.getByRole('dialog', { name: 'Add a device' });
   await expect(add.getByLabel(/Pairing code/)).toBeVisible();
   const code = (await add.locator('p.num').first().textContent())!.trim();
   expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
@@ -26,16 +26,18 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await phone.getByRole('button', { name: 'Pair device' }).click();
   await expect(phone.getByText('Waiting for approval')).toBeVisible();
 
-  // The admin gets a pop-up and approves; the phone continues by itself.
-  const ask = admin.getByRole('alertdialog', { name: 'New device wants to join' });
-  await expect(ask).toContainText('Phone at fan', { timeout: 15_000 });
-  await ask.getByRole('button', { name: 'Approve' }).click();
+  // The same pop-up now asks the admin to approve it; the phone continues by itself.
+  await expect(add).toContainText('Phone at fan', { timeout: 15_000 });
+  await add.getByRole('button', { name: 'Approve' }).click();
+  await expect(add.getByText('Phone at fan is added')).toBeVisible();
+  await add.getByRole('button', { name: 'Done' }).click();
+  const devices = admin.getByRole('region', { name: 'Devices' });
   await expect(phone).toHaveURL(/\/app$/, { timeout: 15_000 });
   await phone.getByText('Microphone', { exact: true }).click();
   await phone.getByRole('button', { name: 'Start monitoring' }).click();
   await expect(phone.getByTestId('assessment')).toHaveText(/Unable to assess|Normal|Abnormal/, { timeout: 30_000 });
 
-  await expect(add.getByText('listening now')).toBeVisible({ timeout: 20_000 });
+  await expect(devices.getByText('listening now')).toBeVisible({ timeout: 20_000 });
   await expect(admin.getByTestId('assessment')).toHaveText(/Normal|Abnormal|Unable to assess/, { timeout: 30_000 });
 
   // A used code does not work twice.
@@ -45,9 +47,9 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await expect(other.getByRole('alert')).toContainText('already used');
 
   // Removing the device cuts it off.
-  await add.getByRole('button', { name: /^More for / }).click();
-  await add.getByRole('menuitem', { name: 'Remove device' }).click();
-  await expect(add.getByText('No devices yet')).toBeVisible();
+  await devices.getByRole('button', { name: /^More for / }).click();
+  await devices.getByRole('menuitem', { name: 'Remove device' }).click();
+  await expect(devices.getByText('No devices yet')).toBeVisible();
   await expect(phone.getByRole('status').filter({ hasText: /interrupted|Monitoring/ }).first()).toBeVisible();
   await phone.getByRole('button', { name: 'Stop monitoring' }).click();
 
