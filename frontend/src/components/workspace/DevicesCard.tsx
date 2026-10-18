@@ -21,7 +21,6 @@ export function DevicesCard({
   profiles,
   canManage,
   addSignal,
-  micSignal = 0,
   onChanged,
   headless = false,
 }: {
@@ -29,7 +28,6 @@ export function DevicesCard({
   profiles: MachineProfile[];
   canManage: boolean;
   addSignal: number; // bumped by the monitor's "Add a device" button
-  micSignal?: number; // bumped by "Use this computer's microphone" outside the pop-up
   onChanged: () => void;
   headless?: boolean; // only the pop-ups (add + approve); the device list is in the sidebar
 }) {
@@ -125,13 +123,6 @@ export function DevicesCard({
     void add();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per click
   }, [addSignal]);
-
-  // "Use this computer's microphone" on the empty workspace: straight to listening; the pop-up only shows a failure.
-  useEffect(() => {
-    if (!micSignal || !canManage) return;
-    void listenHere().then((ok) => ok || setAdding(true));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per click
-  }, [micSignal]);
 
   const popup = canManage && !adding ? pending.find((d) => !dismissed.has(d.id)) : undefined;
 

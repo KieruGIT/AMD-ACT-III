@@ -122,7 +122,6 @@ export function Dashboard() {
   const [editName, setEditName] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
   const [addSignal, setAddSignal] = useState(0);
-  const [micSignal, setMicSignal] = useState(0);
   const [memberSignal, setMemberSignal] = useState(0);
   // arriving with ?add=device|member (from a listening browser's buttons) opens that pop-up once the workspace loads
   const [pendingAdd] = useState(() => new URLSearchParams(location.search).get('add'));
@@ -394,7 +393,6 @@ export function Dashboard() {
               onSelect={watch.selectDevice}
               now={now}
               onAddDevice={canManage ? () => setAddSignal((n) => n + 1) : undefined}
-              onUseMic={canManage ? () => setMicSignal((n) => n + 1) : undefined}
             />
           ) : role === 'unconfigured' ? (
             <div className="grid gap-1 text-sm">
@@ -497,7 +495,7 @@ export function Dashboard() {
 
 
             {watching && watch.overview && (
-              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} micSignal={micSignal} onChanged={watch.reload} headless />
+              <DevicesCard overview={watch.overview} profiles={profiles} canManage={canManage} addSignal={addSignal} onChanged={watch.reload} headless />
             )}
             {(role === 'member' || role === 'guest') && watch.overview?.role && (
               <MembersCard myRole={watch.overview.role} isGuest={role === 'guest'} addSignal={memberSignal} />
