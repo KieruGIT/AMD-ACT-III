@@ -3,16 +3,8 @@ import { accounts } from '../api';
 import { AuthShell, Field, FormError, go } from '../components/auth/AuthShell';
 import { Button } from '../components/ui/primitives';
 import { saveCredentials } from '../lib/credentials';
+import { deviceName } from '../lib/deviceName';
 import type { PairedDevice } from '../types/monitoring';
-
-/** A readable default name for this device, e.g. "iPhone · Safari" (the person can change it). */
-function deviceName() {
-  const ua = navigator.userAgent;
-  const kind = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac'
-    : /Windows/.test(ua) ? 'Windows PC' : /Linux/.test(ua) ? 'Linux' : 'Device';
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '';
-  return browser ? `${kind} · ${browser}` : kind;
-}
 
 /** Formats what is typed as XXXX-XXXX (the backend ignores case and the dash). */
 function tidy(raw: string) {

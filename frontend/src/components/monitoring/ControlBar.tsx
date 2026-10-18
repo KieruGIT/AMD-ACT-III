@@ -64,7 +64,7 @@ export function ControlBar({
             {profiles.length === 0 && <option value="">No profiles loaded</option>}
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.label} · {p.id}
+                {p.label}
               </option>
             ))}
           </select>

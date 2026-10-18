@@ -120,6 +120,9 @@ export function Dashboard() {
   const [editing, setEditing] = useState(false); // rename / delete the workspace
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editName, setEditName] = useState('');
+  const [editDevice, setEditDevice] = useState<{ id: string; name: string } | null>(null); // rename / remove a device
+  const [deviceName, setDeviceName] = useState('');
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [addSignal, setAddSignal] = useState(0);
   const [memberSignal, setMemberSignal] = useState(0);
@@ -194,10 +197,19 @@ export function Dashboard() {
         { label: 'Reject', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
       ];
     }
-    return [
-      { label: 'Remove device', danger: true, onClick: deviceAction(() => api.revokeDevice(d.id)) },
-    ];
+    return []; // rename / remove: the pencil on the row
   };
+  const openDeviceEdit = (d: TreeDevice) => {
+    setEditDevice({ id: d.id, name: d.name });
+    setDeviceName(d.name);
+    setConfirmRemove(false);
+    setEditError(null);
+  };
+  const deviceEdit = (fn: () => Promise<unknown>) =>
+    void fn().then(
+      () => (setEditDevice(null), watch.reload()),
+      (err: Error) => setEditError(err.message),
+    );
   const watchedDevice = watch.overview?.devices.find((d) => d.id === watch.deviceId);
   // a guest's workspaces: the ones this browser made (the open one too, in case it predates the list)
   const guestList: Workspace[] = guestWorkspaces().map((w) => ({ id: w.projectId, name: w.name, role: 'owner' }));
@@ -315,6 +327,7 @@ export function Dashboard() {
           markSeen([id]);
         }}
         deviceActions={deviceActions}
+        onEditDevice={canManage && httpClient ? openDeviceEdit : undefined}
         onEditWorkspace={
           isOwner
             ? () => {
@@ -521,6 +534,53 @@ export function Dashboard() {
 
       <Modal open={alertsOpen} title={watchedName ? `Alerts · ${watchedName}` : 'Alerts'} onClose={() => setAlertsOpen(false)} wide>
         <AlertList events={events} profiles={profiles} now={now} onAcknowledge={vm.acknowledge} />
+      </Modal>
+
+      <Modal open={!!editDevice} title="Device" onClose={() => setEditDevice(null)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editDevice) deviceEdit(() => httpClient!.account.renameDevice(editDevice.id, deviceName.trim()));
+          }}
+          className="grid gap-3"
+        >
+          <label className="grid gap-1.5">
+            <span className="text-sm font-semibold">Name</span>
+            <input
+              value={deviceName}
+              onChange={(e) => setDeviceName(e.target.value)}
+              minLength={2}
+              maxLength={60}
+              required
+              className="min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-sm"
+            />
+          </label>
+          <Button type="submit" variant="primary" className="min-h-11" disabled={deviceName.trim().length < 2 || deviceName.trim() === editDevice?.name}>
+            Save name
+          </Button>
+        </form>
+        <div className="mt-5 border-t border-line pt-4">
+          {confirmRemove ? (
+            <div className="grid gap-2">
+              <p className="text-sm">
+                Remove <span className="font-semibold">{editDevice?.name}</span>? It stops listening and has to be added again to come back.
+              </p>
+              <div className="flex gap-2">
+                <Button className="min-h-10 flex-1" onClick={() => setConfirmRemove(false)}>
+                  Keep it
+                </Button>
+                <Button variant="danger" className="min-h-10 flex-1" onClick={() => editDevice && deviceEdit(() => httpClient!.account.revokeDevice(editDevice.id))}>
+                  Remove device
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirmRemove(true)} className="text-sm font-semibold text-anomaly hover:underline">
+              Remove device…
+            </button>
+          )}
+        </div>
+        {editError && <p role="alert" className="mt-3 text-sm text-anomaly">{editError}</p>}
       </Modal>
 
       <Modal open={editing} title="Workspace" onClose={() => setEditing(false)}>

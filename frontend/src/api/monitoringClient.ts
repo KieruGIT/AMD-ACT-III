@@ -39,6 +39,7 @@ export interface AccountApi {
   renameWorkspace(name: string): Promise<{ id: string; name: string }>;
   deleteWorkspace(): Promise<unknown>;
   relearnDevice(deviceId: string): Promise<unknown>;
+  renameDevice(deviceId: string, name: string): Promise<{ id: string; name: string }>;
   members(): Promise<{ members: Member[]; invitations: Invitation[] }>;
   invite(email: string, role: Role): Promise<{ email: string; role: Role }>;
   cancelInvitation(email: string): Promise<unknown>;
@@ -104,6 +105,7 @@ export function createHttpClient(
     renameWorkspace: (name) => json(`/projects/${pid()}`, body('PATCH', { name })),
     deleteWorkspace: () => json(`/projects/${pid()}`, body('DELETE')),
     approveDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/approve`, body('POST')),
+    renameDevice: (deviceId, name) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}`, body('PATCH', { name })),
     relearnDevice: (deviceId) => json(`/projects/${pid()}/devices/${encodeURIComponent(deviceId)}/relearn`, body('POST')),
     members: () => json(`/projects/${pid()}/members`),
     invite: (email, role) => json(`/projects/${pid()}/invitations`, body('POST', { email, role })),

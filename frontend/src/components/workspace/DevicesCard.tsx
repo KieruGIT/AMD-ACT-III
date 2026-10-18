@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { accounts, httpClient } from '../../api';
 import { credentials, saveCredentials } from '../../lib/credentials';
+import { deviceName } from '../../lib/deviceName';
 import { formatAgo } from '../../lib/format';
 import type { DeviceSummary, MachineProfile, PairingCode, ProjectOverview } from '../../types/monitoring';
 import { FormError, go } from '../auth/AuthShell';
@@ -94,8 +95,8 @@ export function DevicesCard({
   // The admin turns this browser into the listener themselves: no approval step needed.
   const listenHere = () =>
     run('self', async () => {
-      const c = code ?? (await httpClient!.account.pairingCode('This computer', machine));
-      const d = await accounts.pair(c.code, 'This computer');
+      const c = code ?? (await httpClient!.account.pairingCode(deviceName(), machine));
+      const d = await accounts.pair(c.code, deviceName());
       await httpClient!.account.approveDevice(d.device_id);
       // keep this browser's workspace access, so managing the workspace stays one click away
       const home = credentials ? { ...credentials, home: undefined } : undefined;

@@ -46,9 +46,15 @@ test('guest pairs a listening device with a code and watches it', async ({ brows
   await other.getByRole('button', { name: 'Pair device' }).click();
   await expect(other.getByRole('alert')).toContainText('already used');
 
-  // Removing the device cuts it off.
-  await devices.getByRole('button', { name: /^More for / }).click();
-  await admin.getByRole('menuitem', { name: 'Remove device' }).click();
+  // Renaming it from the pencil on its row, then removing it, which cuts it off.
+  await devices.getByRole('button', { name: /^Rename or remove / }).click();
+  const dialog = admin.getByRole('dialog', { name: 'Device' });
+  await dialog.getByLabel('Name').fill('Bench grinder');
+  await dialog.getByRole('button', { name: 'Save name' }).click();
+  await expect(devices.getByText('Bench grinder')).toBeVisible();
+  await devices.getByRole('button', { name: 'Rename or remove Bench grinder' }).click();
+  await dialog.getByRole('button', { name: 'Remove device…' }).click();
+  await dialog.getByRole('button', { name: 'Remove device', exact: true }).click();
   await expect(devices.getByText('No devices yet')).toBeVisible();
   await expect(phone.getByRole('status').filter({ hasText: /interrupted|Monitoring/ }).first()).toBeVisible();
   await phone.getByRole('button', { name: 'Stop monitoring' }).click();

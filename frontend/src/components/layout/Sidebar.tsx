@@ -38,6 +38,7 @@ export function Sidebar({
   onSelectDevice,
   deviceActions,
   onEditWorkspace,
+  onEditDevice,
 }: {
   showDemo?: boolean; // guests already have a real workspace to try, so no Demo link
   workspaces: Workspace[] | null; // null: this browser is not signed in (guest, device, demo): just the current one
@@ -52,7 +53,8 @@ export function Sidebar({
   selectedDeviceId?: string | null;
   onSelectDevice?: (id: string) => void;
   deviceActions?: (d: TreeDevice) => RowAction[];
-  onEditWorkspace?: () => void; // pencil at the end of the current workspace
+  onEditWorkspace?: () => void; // pencil on the current workspace (shown on hover)
+  onEditDevice?: (d: TreeDevice) => void; // pencil on a device (shown on hover)
 }) {
   const [open, setOpen] = useState(false); // phones
   const [creating, setCreating] = useState(false);
@@ -127,7 +129,7 @@ export function Sidebar({
                     type="button"
                     aria-label={`Rename or delete ${w.name}`}
                     onClick={onEditWorkspace}
-                    className="mr-1.5 grid size-8 shrink-0 place-items-center rounded-lg text-ink-faint hover:bg-surface-muted hover:text-ink"
+                    className="mr-1.5 grid size-8 shrink-0 place-items-center rounded-lg text-ink-faint transition-opacity hover:bg-surface-muted hover:text-ink opacity-100 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
                     <Pencil aria-hidden className="size-3.5" />
                   </button>
@@ -142,7 +144,7 @@ export function Sidebar({
                     const selected = d.id === selectedDeviceId;
                     const actions = deviceActions?.(d) ?? [];
                     return (
-                      <li key={d.id} className={`flex items-center rounded-lg ${selected ? 'bg-teal-soft/70' : 'hover:bg-surface-muted'}`}>
+                      <li key={d.id} className={`group/device flex items-center rounded-lg ${selected ? 'bg-teal-soft/70' : 'hover:bg-surface-muted'}`}>
                         <button
                           type="button"
                           aria-current={selected ? 'true' : undefined}
@@ -164,6 +166,16 @@ export function Sidebar({
                             </span>
                           )}
                         </button>
+                        {!d.pending && onEditDevice && (
+                          <button
+                            type="button"
+                            aria-label={`Rename or remove ${d.name}`}
+                            onClick={() => onEditDevice(d)}
+                            className="mr-1 grid size-7 shrink-0 place-items-center rounded-md text-ink-faint transition-opacity hover:bg-surface-muted hover:text-ink opacity-100 [@media(hover:hover)]:opacity-0 group-hover/device:opacity-100 focus-visible:opacity-100"
+                          >
+                            <Pencil aria-hidden className="size-3.5" />
+                          </button>
+                        )}
                         {actions.length > 0 && <RowMenu label={`More for ${d.name}`} actions={actions} />}
                       </li>
                     );

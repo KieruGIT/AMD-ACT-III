@@ -151,6 +151,21 @@ def test_wrong_codes_are_rate_limited(c):
     assert c.post("/api/v1/pair", json={"code": "ZZZZ-ZZZZ"}).status_code == 429
 
 
+def test_devices_can_be_renamed_by_admins(c):
+    g = c.post("/api/v1/guest").json()
+    h, pid = {"X-Guest-Key": g["guest_key"]}, g["project_id"]
+    code = c.post(f"/api/v1/projects/{pid}/pairing-codes", json={"device_name": "Device 1"}, headers=h).json()["code"]
+    dev = c.post("/api/v1/pair", json={"code": code, "device_name": "Windows PC · Chrome"}).json()
+    r = c.patch(f"/api/v1/projects/{pid}/devices/{dev['device_id']}", json={"name": "  Bench grinder "}, headers=h)
+    assert r.status_code == 200 and r.json()["name"] == "Bench grinder"
+    names = [d["name"] for d in c.get(f"/api/v1/projects/{pid}", headers=h).json()["devices"]]
+    assert names == ["Bench grinder"]
+    assert c.patch(f"/api/v1/projects/{pid}/devices/dev_nope", json={"name": "X1"}, headers=h).status_code == 404
+    assert c.patch(f"/api/v1/projects/{pid}/devices/{dev['device_id']}", json={"name": "x"}, headers=h).status_code == 422
+    assert c.patch(f"/api/v1/projects/{pid}/devices/{dev['device_id']}", json={"name": "Hi"},
+                   headers={"X-Guest-Key": "gk_wrong"}).status_code == 403
+
+
 def test_guest_workspace_is_temporary_and_cannot_invite(c):
     g = c.post("/api/v1/guest", json={"name": "Garage"}).json()
     h = {"X-Guest-Key": g["guest_key"]}

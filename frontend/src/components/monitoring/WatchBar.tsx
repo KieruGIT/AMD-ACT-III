@@ -64,7 +64,7 @@ export function WatchBar({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{d.name}</span>
                   <span className={`block truncate text-xs ${selected ? 'text-white/70' : 'text-ink-faint'}`}>
-                    {d.machine_id} · {online ? 'listening now' : d.last_seen_at ? `last seen ${formatAgo(seen)}` : 'never connected'}
+                    {online ? 'listening now' : d.last_seen_at ? `last seen ${formatAgo(seen)}` : 'never connected'}
                   </span>
                 </span>
                 <span aria-hidden className={`size-2 shrink-0 rounded-full ${online ? 'live-dot bg-normal text-normal' : 'bg-line-strong'}`} />

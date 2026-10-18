@@ -290,6 +290,11 @@ class Database:
                 (device_id, project_id, name, machine_id, hash_key(device_key), now_iso(), 1 if pending else 0))
         return device_id, device_key
 
+    def rename_device(self, project_id: str, device_id: str, name: str) -> bool:
+        rows = self._q("UPDATE devices SET name = ? WHERE project_id = ? AND id = ? AND revoked_at IS NULL RETURNING id",
+                       (name, project_id, device_id))
+        return bool(rows)
+
     def ensure_device(self, project_id: str, name: str, machine_id: str, device_key: str) -> str:
         """Create a device with a GIVEN key unless it exists (startup bootstrap). Stable id derived from the key."""
         existing = self.device_by_key(project_id, device_key)

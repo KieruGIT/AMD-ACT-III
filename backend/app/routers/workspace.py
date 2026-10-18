@@ -238,6 +238,17 @@ def approve(project_id: str, device_id: str, request: Request, authorization: st
     return {"ok": True}
 
 
+@router.patch("/projects/{project_id}/devices/{device_id}")
+def rename_device(project_id: str, device_id: str, body: Rename, request: Request, authorization: str | None = Header(None),
+                  x_guest_key: str | None = Header(None)):
+    p = _caller(request, project_id, "admin", authorization, x_guest_key)
+    name = body.name.strip()
+    if not request.app.state.db.rename_device(project_id, device_id, name):
+        raise HTTPException(404, "device not found")
+    request.app.state.db.audit(project_id, p.actor, "device.renamed", f"{device_id} → {name}")
+    return {"id": device_id, "name": name}
+
+
 @router.post("/projects/{project_id}/devices/{device_id}/relearn")
 def relearn(project_id: str, device_id: str, request: Request, authorization: str | None = Header(None),
             x_guest_key: str | None = Header(None)):
