@@ -2,7 +2,7 @@ import { Plus, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import { accounts, httpClient } from '../../api';
-import { saveCredentials } from '../../lib/credentials';
+import { credentials, saveCredentials } from '../../lib/credentials';
 import { formatAgo } from '../../lib/format';
 import type { DeviceSummary, MachineProfile, PairingCode, ProjectOverview } from '../../types/monitoring';
 import { FormError, go } from '../auth/AuthShell';
@@ -93,7 +93,9 @@ export function DevicesCard({
       const c = code ?? (await httpClient!.account.pairingCode('This browser', machine));
       const d = await accounts.pair(c.code, 'This browser');
       await httpClient!.account.approveDevice(d.device_id);
-      saveCredentials({ projectId: d.project_id, projectName: d.project_name, deviceKey: d.device_key, deviceName: d.device_name });
+      // keep this browser's workspace access, so managing the workspace stays one click away
+      const home = credentials ? { ...credentials, home: undefined } : undefined;
+      saveCredentials({ projectId: d.project_id, projectName: d.project_name, deviceKey: d.device_key, deviceName: d.device_name, home });
       go('/app');
     });
 

@@ -22,13 +22,18 @@ import { useMonitoringSession } from '../hooks/useMonitoringSession';
 import { useNow } from '../hooks/useNow';
 import { useProjectWatch } from '../hooks/useProjectWatch';
 import { playAlertTone } from '../lib/alertSound';
-import { clearCredentials, credentials } from '../lib/credentials';
+import { clearCredentials, credentials, saveCredentials } from '../lib/credentials';
 import { accessToken } from '../lib/supabase';
 import { timeZoneLabel } from '../lib/format';
 import { assessmentView } from '../lib/sessionReducer';
-import { modeLabel } from '../lib/status';
 import { open, signOut } from '../lib/session';
 import type { Me } from '../types/monitoring';
+
+/** A browser that listens for its own workspace goes back to managing it (its earlier access was kept). */
+function goHome(add?: 'device' | 'member') {
+  if (credentials?.home) saveCredentials(credentials.home);
+  location.assign(add ? `/app?add=${add}` : '/app');
+}
 
 const ROLE_LABEL = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' } as const;
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -70,6 +75,7 @@ function accountBlock(me: Me | null, emailAlerts: boolean | undefined, toggleEma
           {
             label: 'Unpair this browser',
             onClick: () => {
+              if (credentials?.home) return goHome();
               clearCredentials();
               void accessToken().then((t) => location.assign(t ? '/workspaces' : '/signin'));
             },
@@ -91,19 +97,27 @@ export function Dashboard() {
   const vm = watching ? watch : session;
   const { state, events } = vm;
   const { backend } = session;
-  const mode = modeLabel(backend.health?.mode);
   const now = useNow(500);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [allAlerts, setAllAlerts] = useState(false);
   const alertsRef = useRef<HTMLDivElement>(null);
   const [addSignal, setAddSignal] = useState(0);
   const [memberSignal, setMemberSignal] = useState(0);
+  // arriving with ?add=device|member (from a listening browser's buttons) opens that pop-up once the workspace loads
+  const [pendingAdd] = useState(() => new URLSearchParams(location.search).get('add'));
   const [me, setMe] = useState<Me | null>(null);
   const [source, setSource] = useState<SourceKind>(client.mode === 'mock' ? 'simulated' : 'microphone');
   const [machineId, setMachineId] = useState('');
   const [micId, setMicId] = useState<string | null>(null);
   const [sound, setSound] = useState(false);
   const canManage = watching && (watch.overview?.role === 'owner' || watch.overview?.role === 'admin') && watch.overview?.access !== 'viewer_key';
+
+  useEffect(() => {
+    if (!pendingAdd || !canManage) return;
+    history.replaceState(null, '', location.pathname);
+    if (pendingAdd === 'device') setAddSignal((n) => n + 1);
+    if (pendingAdd === 'member') setMemberSignal((n) => n + 1);
+  }, [pendingAdd, canManage]);
 
   useEffect(() => {
     if (role === 'unconfigured') location.replace('/signin'); // live mode needs a workspace (or a paired device)
@@ -156,7 +170,7 @@ export function Dashboard() {
         currentName={credentials?.projectName ?? watch.overview?.name ?? 'Workspace'}
         demo={isDemo}
         hasWorkspace={!!credentials}
-        onOpen={(w) => (w.id === credentials?.projectId ? location.assign('/app') : open(w))}
+        onOpen={(w) => (w.id === credentials?.projectId ? goHome() : open(w))}
         onCreate={credentials?.member ? async (name) => open(await accounts.createWorkspace(name)) : undefined}
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}
       />
@@ -182,23 +196,20 @@ export function Dashboard() {
       <main className="mx-auto grid max-w-[1280px] gap-5 px-4 pt-6 pb-16 sm:px-6 lg:px-8 lg:pt-8">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
-            <p className="eyebrow text-ink-faint">
-              Live monitoring ·{' '}
-              <span className={mode.className}>{mode.text}</span>
-            </p>
+            <p className="eyebrow text-ink-faint">{role === 'device' ? 'This browser is listening' : 'Live monitoring'}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
               {profile ? profile.label : 'Machine monitor'}
               {profile && <span className="ml-3 align-middle text-base font-medium tracking-normal text-ink-faint">{profile.id}</span>}
             </h1>
           </div>
-          {canManage ? (
+          {canManage || (role === 'device' && credentials?.home) ? (
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" className="min-h-10 gap-1.5 px-4" onClick={() => setAddSignal((n) => n + 1)}>
+              <Button variant="primary" className="min-h-10 gap-1.5 px-4" onClick={() => (canManage ? setAddSignal((n) => n + 1) : goHome('device'))}>
                 <Plus aria-hidden className="size-4" />
                 Add device
               </Button>
-              {(role === 'member' || role === 'guest') && (
-                <Button className="min-h-10 gap-1.5 px-4" onClick={() => setMemberSignal((n) => n + 1)}>
+              {(role === 'member' || role === 'guest' || !!credentials?.home) && (
+                <Button className="min-h-10 gap-1.5 px-4" onClick={() => (canManage ? setMemberSignal((n) => n + 1) : goHome('member'))}>
                   <UserPlus aria-hidden className="size-4" />
                   Add member
                 </Button>

@@ -15,6 +15,8 @@ export interface Credentials {
   guestKey?: string;
   expiresAt?: string;
   member?: boolean;
+  /** "Listen with this browser": the workspace access this browser had before it became a listener (kept, not lost). */
+  home?: Omit<Credentials, 'home'>;
 }
 
 const KEY = 'msm:credentials';

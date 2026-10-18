@@ -24,3 +24,16 @@ test('the demo keeps your workspace one click away, and adding stays available',
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByText('Nothing is kept')).toBeVisible();
 });
+
+test('listening with this browser keeps the workspace: Add device still works', async ({ page }) => {
+  await page.goto('/signin');
+  await page.getByRole('button', { name: 'Continue as guest' }).click();
+  await page.getByRole('button', { name: 'Add device' }).click();
+  await page.getByRole('dialog', { name: 'Add a device' }).getByRole('button', { name: 'Or listen with this browser' }).click();
+  await expect(page.getByText('This browser is listening')).toBeVisible();
+  await expect(page.getByText(/Dev scorer/i)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Add device' }).click(); // back to managing, pop-up open
+  await expect(page.getByRole('dialog', { name: 'Add a device' }).getByLabel(/Pairing code/)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Devices' }).getByText('This browser')).toBeVisible();
+});

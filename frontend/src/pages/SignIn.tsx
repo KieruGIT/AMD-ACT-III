@@ -112,7 +112,7 @@ export function SignIn() {
                 </button>
               ))}
             </div>
-            <Field label="Work e-mail" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Field label="E-mail" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             <Field
               label="Password"
               type="password"
