@@ -14,6 +14,12 @@ export const client: HttpClient | MockClient = isMockMode
 export const mockClient = isMockMode ? (client as MockClient) : null;
 export const httpClient = isMockMode ? null : (client as HttpClient);
 
+/** "Use this computer's microphone": the workspace access this browser kept, so its sidebar still lists the devices. */
+export const homeClient =
+  !isMockMode && credentials?.deviceKey && credentials.home
+    ? createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', credentials.home, accessToken)
+    : null;
+
 /** Account calls that do not depend on the workspace this browser has open (sign-in, guest, pairing, my workspaces). */
 export const accounts = createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', null, accessToken).account;
 

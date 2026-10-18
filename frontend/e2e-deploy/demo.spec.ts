@@ -27,6 +27,7 @@ test('using this computer microphone keeps the workspace: Add device still works
   await page.getByRole('button', { name: 'Add device' }).click();
   await page.getByRole('dialog', { name: 'Add a device' }).getByRole('button', { name: "Use this computer's microphone" }).click();
   await expect(page.getByText("Using this computer's microphone")).toBeVisible();
+  await expect(page.getByRole('list', { name: /^Devices in / }).getByText(/Chrome/)).toBeVisible(); // listed while it listens
   await expect(page.getByText(/Dev scorer/i)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Add device' }).click(); // back to managing, pop-up open

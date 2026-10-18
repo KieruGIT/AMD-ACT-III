@@ -1,6 +1,6 @@
 import { Bell, Plus, UserPlus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { accounts, client, httpClient, isDemo, role } from '../api';
+import { accounts, client, homeClient, httpClient, isDemo, role } from '../api';
 import type { SourceKind } from '../audio/sources';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertToast } from '../components/alerts/AlertToast';
@@ -31,7 +31,7 @@ import { formatAgo, timeZoneLabel } from '../lib/format';
 import { createGuestWorkspace, forgetAllGuestWorkspaces, forgetGuestWorkspace, guestWorkspaces, openGuest, renameGuestWorkspace } from '../lib/guest';
 import { assessmentView } from '../lib/sessionReducer';
 import { open, signOut } from '../lib/session';
-import type { Me, Workspace } from '../types/monitoring';
+import type { Me, ProjectOverview, Workspace } from '../types/monitoring';
 
 /** A browser that listens for its own workspace goes back to managing it (its earlier access was kept). */
 function goHome(add?: 'device' | 'member') {
@@ -166,7 +166,17 @@ export function Dashboard() {
     if (watch.deviceId) markSeen([watch.deviceId]);
   }, [watch.deviceId, markSeen]);
 
-  const treeDevices: TreeDevice[] = (watch.overview?.devices ?? []).map((d) => {
+  // Listening with this computer: the sidebar still lists the workspace's devices, read with the access it kept.
+  const [homeOverview, setHomeOverview] = useState<ProjectOverview | null>(null);
+  useEffect(() => {
+    if (!homeClient) return;
+    const load = () => homeClient!.project().then(setHomeOverview, () => undefined);
+    load();
+    const t = setInterval(load, 5000);
+    return () => clearInterval(t);
+  }, []);
+
+  const treeDevices: TreeDevice[] = (watch.overview?.devices ?? homeOverview?.devices ?? []).map((d) => {
     const ago = d.last_seen_at ? now - Date.parse(d.last_seen_at) : Infinity;
     const live = ago < 10_000;
     const learning = !d.pending && d.learned_at === null ? d.latest?.learning : null;
@@ -320,7 +330,7 @@ export function Dashboard() {
               : undefined
         }
         account={accountBlock(me, emailAlerts, toggleEmail, () => setSettingsOpen(true), watch.overview?.role, now)}
-        devices={watching ? treeDevices : []}
+        devices={watching || homeClient ? treeDevices : []}
         selectedDeviceId={watch.deviceId}
         onSelectDevice={(id) => {
           watch.selectDevice(id);

@@ -1,8 +1,9 @@
+import { CircleHelp } from 'lucide-react';
+import { useState } from 'react';
 import type { AlertEvent, ConfigResponse } from '../../types/monitoring';
 import type { AssessmentView, SessionState } from '../../lib/sessionReducer';
 import { formatDuration, formatScore, formatTime, timeZoneLabel } from '../../lib/format';
 import { ASSESSMENT, QUALITY_LABEL } from '../../lib/status';
-import { StatusChip } from '../ui/primitives';
 
 const wordColor: Record<AssessmentView, string> = {
   idle: 'text-on-dark',
@@ -44,6 +45,13 @@ export function AssessmentCard({
   const historical = r && !live && view !== 'idle';
   const delta = r?.anomaly_score != null && r.threshold != null ? r.anomaly_score - r.threshold : null;
   const windowS = config ? config.input.window_ms / 1000 : null;
+  const [help, setHelp] = useState(false);
+  const explanation =
+    activeEvent && view === 'normal'
+      ? 'This window is below the threshold, but the open alert stays active until several consecutive normal windows confirm recovery.'
+      : view === 'unable_to_assess' && r?.note
+        ? `Not assessed: ${r.note}.`
+        : meta.description;
 
   return (
     <section
@@ -54,20 +62,30 @@ export function AssessmentCard({
 
       <div className="relative flex items-start justify-between gap-3">
         <p id="assessment-title" className="eyebrow whitespace-nowrap text-on-dark-muted">Current assessment</p>
-        <StatusChip dark tone={meta.tone} Icon={meta.Icon}>{meta.short}</StatusChip>
+        <button
+          type="button"
+          aria-label="What does this mean?"
+          aria-expanded={help}
+          aria-controls="assessment-help"
+          onClick={() => setHelp((h) => !h)}
+          className={`grid size-8 shrink-0 place-items-center rounded-full transition-colors ${help ? 'bg-on-dark text-navy' : 'bg-navy-raised text-on-dark-muted hover:text-on-dark'}`}
+        >
+          <CircleHelp aria-hidden className="size-4" />
+        </button>
       </div>
 
       <div className="relative mt-6" role="status" aria-live="polite" aria-atomic="true" data-testid="assessment">
         <p className={`text-[clamp(2.25rem,4vw,3.4rem)] leading-[0.95] font-semibold tracking-[-0.035em] text-balance ${wordColor[view]}`}>
           {meta.label}
         </p>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-on-dark-muted">
-          {activeEvent && view === 'normal'
-            ? 'This window is below the threshold, but the open alert stays active until several consecutive normal windows confirm recovery.'
-            : view === 'unable_to_assess' && r?.note
-              ? `Not assessed: ${r.note}.`
-              : meta.description}
-        </p>
+        {help && (
+          <div id="assessment-help" className="mt-3 grid max-w-sm gap-1.5 rounded-[var(--radius-inner)] bg-navy-raised p-3 text-xs leading-relaxed text-on-dark-muted">
+            <p className="text-sm text-on-dark">{explanation}</p>
+            <p>
+              Times in {timeZoneLabel()}. Window = end of a {windowS ?? '?'} s capture. Score is not a probability.
+            </p>
+          </div>
+        )}
         {r?.interference?.recent_windows_flagged ? (
           <p className="mt-2 max-w-sm text-xs text-on-dark-muted" data-testid="interference">
             Possible interference in {r.interference.recent_windows_flagged} of the last{' '}
@@ -117,9 +135,6 @@ export function AssessmentCard({
         <Cell label="Model latency" value={r?.processing.model_ms != null ? `${r.processing.model_ms} ms` : '—'} />
         <Cell label="Round trip" value={state.roundTripMs != null ? `${state.roundTripMs} ms` : '—'} />
       </dl>
-      <p className="relative mt-3 text-[11px] text-on-dark-muted">
-        Times in {timeZoneLabel()}. Window = end of a {windowS ?? '?'} s capture. Score is not a probability.
-      </p>
     </section>
   );
 }
