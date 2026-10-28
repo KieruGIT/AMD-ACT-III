@@ -11,6 +11,10 @@ export const client: HttpClient | MockClient = isMockMode
   ? createMockClient()
   : createHttpClient(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000', credentials, accessToken);
 
+// Wake the API as soon as the page opens (a free Render service sleeps when idle and takes ~50 s to boot), so it is
+// ready by the time the visitor clicks through. Fire-and-forget: failures surface later through the real calls.
+if (!isMockMode) fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/api/v1/health`).catch(() => {});
+
 export const mockClient = isMockMode ? (client as MockClient) : null;
 export const httpClient = isMockMode ? null : (client as HttpClient);
 
