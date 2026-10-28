@@ -1,4 +1,4 @@
-"""/api/v1 routes (PROJECT_PLAN.md §5 plus the proposed v1.1 project/device/stream additions)."""
+"""/api/v1 routes (v1 plus the v1.1 project/device/stream additions)."""
 from __future__ import annotations
 
 import asyncio

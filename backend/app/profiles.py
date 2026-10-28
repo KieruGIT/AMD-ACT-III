@@ -1,4 +1,4 @@
-"""Supported machine profiles and the audio contract (PROJECT_PLAN.md §3.3, §5.2).
+"""Supported machine profiles and the audio contract.
 
 Provisional until the AI developer confirms window/hop/sample rate with the trained model.
 """

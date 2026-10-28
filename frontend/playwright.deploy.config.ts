@@ -2,7 +2,6 @@ import { defineConfig } from '@playwright/test';
 
 // Tests against a running live stack (deployed, or a local backend + live build):
 //   DEPLOY_URL=https://<frontend> npx playwright test -c playwright.deploy.config.ts accounts   (guest + pairing)
-//   single-origin.spec also needs DEPLOY_API_URL, DEPLOY_PROJECT, DEPLOY_VIEWER_KEY, DEPLOY_DEVICE_KEY (admin CLI links)
 export default defineConfig({
   testDir: './e2e-deploy',
   timeout: 120_000,

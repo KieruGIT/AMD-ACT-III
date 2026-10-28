@@ -1,4 +1,4 @@
-"""Alert aggregation — the backend is the source of truth (PROJECT_PLAN.md §5.5).
+"""Alert aggregation — the backend is the source of truth.
 
 Same rules as the frontend mock (frontend/src/api/mock/alertPolicy.ts):
 an event fires when `min_anomalous_windows` of the last `consider_last_valid_windows` valid windows

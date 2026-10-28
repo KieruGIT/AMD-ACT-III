@@ -1,4 +1,4 @@
-// API contract v1 — mirrors docs PROJECT_PLAN.md §5. Do not change fields without the AI developer.
+// API contract v1 (backend/app/routers/api.py). Do not change fields without the AI developer.
 
 export type MonitoringStatus =
   | 'idle'

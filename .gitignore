@@ -32,3 +32,11 @@ deploy/.space-links.txt
 # env templates stay local (not published)
 .env.example
 .env.production
+
+# Kept locally, not published
+reference-images/
+docs/DESIGN_BRIEF.md
+docs/PROJECT_PLAN.md
+docs/ML_STATUS.md
+deploy/
+frontend/e2e-deploy/single-origin.spec.ts

@@ -186,7 +186,6 @@ then serve with `SCORER=autoencoder MODEL_PATH=<checkpoint>`.
 | Option | What |
 | --- | --- |
 | **Vercel + Render** | Frontend on Vercel (root `frontend`, `vercel.json`); API as a Docker web service from [`render.yaml`](render.yaml). |
-| **Hugging Face Space** | Whole app on one HTTPS URL with [`deploy/hf_space.py`](deploy/hf_space.py) (CPU). |
 | **AMD GPU machine** | `uvicorn app.main:app --host 0.0.0.0 --port 8000` behind HTTPS, e.g. `cloudflared tunnel --url http://localhost:8000`. |
 
 Build the frontend with `VITE_MOCK_API=false` and `VITE_API_BASE_URL=<api https url>`, and set the API's
@@ -198,8 +197,7 @@ Build the frontend with `VITE_MOCK_API=false` and `VITE_API_BASE_URL=<api https 
 frontend/          React app: landing page, console, phone listener
 backend/           FastAPI analysis API, scorers, alert policy, email, live stream
 ml/                training, evaluation, DCASE metrics, AMD run script, reports/
-deploy/            single-container build and Hugging Face Space deploy
-docs/              project plan, design brief, ML status, AMD guide, email templates
+docs/              AMD guide, email templates
 media/             pitch videos, slides, cover image, screenshots
 ```
 

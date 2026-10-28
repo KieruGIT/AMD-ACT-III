@@ -1,6 +1,6 @@
 """Log-mel features — the ONE implementation used by both training (ml/) and serving (autoencoder.py).
 
-Training and inference must compute features identically (PROJECT_PLAN.md §3.3); never fork this file.
+Training and inference must compute features identically; never fork this file.
 Defaults follow the DCASE 2020 Task 2 baseline (128 mels, 1024-pt FFT, 512 hop, 5-frame context).
 """
 from __future__ import annotations
