@@ -7,9 +7,11 @@
 #   API_URL = https://<render-service>.onrender.com     APP_URL = https://<vercel-domain>
 name: Keep app awake
 
+# DISABLED: the project is complete and the Render/Vercel deployments are turned off.
+# To re-enable, restore the schedule below:
+#   schedule:
+#     - cron: "3-59/10 * * * *" # every 10 min, off the hour
 on:
-  schedule:
-    - cron: "3-59/10 * * * *" # every 10 min, off the hour: GitHub delays jobs queued exactly on the hour
   workflow_dispatch:
 
 permissions: {}

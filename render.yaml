@@ -10,7 +10,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/health
-    autoDeploy: true
+    autoDeploy: false # project complete: no more deploys on push
     envVars:
       - key: SCORER
         value: heuristic
